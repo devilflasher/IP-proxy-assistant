@@ -1,0 +1,36 @@
+{
+  "manifest_version": 3,
+  "name": "IP代理助手",
+  "version": "2.1",
+  "description": "一个简洁高效的代理切换工具，支持多代理配置、快速切换和状态监控",
+  "permissions": [
+    "proxy",
+    "storage",
+    "notifications",
+    "webRequest",
+    "webRequestAuthProvider",
+    "alarms"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "options_page": "settings.html",
+  "action": {
+    "default_popup": "popup.html",
+    "default_badge": {
+      "text_color": "#52c41a",
+      "background_color": "#52c41a"
+    }
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'; script-src-elem 'self' 'unsafe-inline'"
+  }
+} 

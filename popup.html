@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" href="styles.css">
+    <title>IP代理助手</title>
+</head>
+<body>
+    <div class="container">
+        <!-- 顶部标题栏 -->
+        <div class="header">
+            <div class="title-with-logo">
+                <img src="icons/icon48.png" alt="logo" class="logo">
+                <h1>IP代理助手 v2.1</h1>
+            </div>
+            <button id="settingsBtn" class="filter" title="设置">
+                <svg viewBox="0 0 512 512" height="1em">
+                    <path d="M0 416c0 17.7 14.3 32 32 32l54.7 0c12.3 28.3 40.5 48 73.3 48s61-19.7 73.3-48L480 448c17.7 0 32-14.3 32-32s-14.3-32-32-32l-246.7 0c-12.3-28.3-40.5-48-73.3-48s-61 19.7-73.3 48L32 384c-17.7 0-32 14.3-32 32zm128 0a32 32 0 1 1 64 0 32 32 0 1 1 -64 0zM320 256a32 32 0 1 1 64 0 32 32 0 1 1 -64 0zm32-80c-32.8 0-61 19.7-73.3 48L32 224c-17.7 0-32 14.3-32 32s14.3 32 32 32l246.7 0c12.3 28.3 40.5 48 73.3 48s61-19.7 73.3-48l54.7 0c17.7 0 32-14.3 32-32s-14.3-32-32-32l-54.7 0c-12.3-28.3-40.5-48-73.3-48zM192 128a32 32 0 1 1 0-64 32 32 0 1 1 0 64zm73.3-64C253 35.7 224.8 16 192 16s-61 19.7-73.3 48L32 64C14.3 64 0 78.3 0 96s14.3 32 32 32l86.7 0c12.3 28.3 40.5 48 73.3 48s61-19.7 73.3-48L480 128c17.7 0 32-14.3 32-32s-14.3-32-32-32L265.3 64z"></path>
+                </svg>
+            </button>
+        </div>
+
+        <!-- IP选择区域 -->
+        <div class="proxy-section">
+            <select class="ip-select">
+                <option value="">选择代理IP</option>
+                <option value="ip1">192.168.1.1:8080</option>
+                <option value="ip2">10.0.0.1:3128</option>
+            </select>
+
+            <!-- 开关按钮 -->
+            <label class="switch">
+                <input type="checkbox" class="toggle">
+                <span class="slider"></span>
+                <span class="card-side"></span>
+            </label>
+        </div>
+
+        <!-- IP状态信息 -->
+        <div class="status-section">
+            <div class="status-item">
+                <span>当前IP:</span>
+                <span class="ip-value"></span>
+            </div>
+            <div class="status-item">
+                <span>连接状态:</span>
+                <span class="status-value"></span>
+            </div>
+        </div>
+
+        <!-- 底部按钮区域 -->
+        <div class="bottom-buttons">
+            <!-- 左侧悬浮提示按钮 -->
+            <div class="hover-container">
+                <a href="https://discord.com/invite/RMsffEx277" target="_blank" class="hover-me">NoBiggie社区</a>
+                <div class="tooltip">
+                    <p>加入我们吧！👋</p>
+                </div>
+            </div>
+            
+            <!-- 右侧X按钮 -->
+            <a href="https://x.com/DevilflasherX" target="_blank" class="button x">
+                <svg viewBox="0 0 16 16" class="bi bi-twitter-x" fill="currentColor" height="16" width="16" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M12.6.75h2.454l-5.36 6.142L16 15.25h-4.937l-3.867-5.07-4.425 5.07H.316l5.733-6.57L0 .75h5.063l3.495 4.633L12.601.75Zm-.86 13.028h1.36L4.323 2.145H2.865z"></path>
+                </svg>
+                @ devilflasher
+            </a>
+        </div>
+    </div>
+    <script src="popup.js"></script>
+</body>
+</html> 

@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" href="settings.css">
+    <title>IP代理助手 - 设置</title>
+</head>
+<body>
+    <div class="settings-container">
+        <div class="settings-header">
+            <h2>代理设置</h2>
+            <button class="close-btn">×</button>
+        </div>
+        
+        <div class="settings-content">
+            <table class="proxy-table">
+                <thead>
+                    <tr>
+                        <th>序号</th>
+                        <th>协议</th>
+                        <th>IP地址</th>
+                        <th>用户名</th>
+                        <th>密码</th>
+                        <th>端口</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody id="proxyList">
+                </tbody>
+            </table>
+            
+            <button class="add-btn" id="addProxy">
+                <span>+</span>
+            </button>
+        </div>
+        
+        <div class="settings-footer">
+            <div class="button-group">
+                <input type="file" id="excelFile" accept=".csv" style="display: none;">
+                <button class="import-btn" id="importBtn">
+                    <svg viewBox="0 0 24 24" width="16" height="16" style="margin-right: 5px;">
+                        <path fill="currentColor" d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/>
+                    </svg>
+                    批量导入
+                </button>
+                <button class="save-btn">保存</button>
+            </div>
+        </div>
+
+        <div class="template-guide">
+            <h3>导入文件说明</h3>
+            <p>请将 Excel 文件另存为 CSV 格式后导入：</p>
+            <div class="table-container">
+                <table class="guide-table">
+                    <tr>
+                        <td>1</td>
+                        <td>http</td>
+                        <td>192.168.1.1</td>
+                        <td>user1</td>
+                        <td>pass1</td>
+                        <td>8080</td>
+                    </tr>
+                    <tr>
+                        <td>2</td>
+                        <td>https</td>
+                        <td>10.0.0.1</td>
+                        <td>user2</td>
+                        <td>pass2</td>
+                        <td>3128</td>
+                    </tr>
+                </table>
+            </div>
+            <div class="guide-notes">
+                <p>注意事项：</p>
+                <ul>
+                    <li>支持 CSV 格式文件（可在 Excel 中另存为 CSV 格式）</li>
+                    <li>从第一行开始直接填写内容，无需表头</li>
+                    <li>按顺序填写：序号、协议、IP地址、用户名、密码、端口</li>
+                    <li>协议只支持 http 或 https，填写时注意大小写</li>
+                    <li>端口号必须是 1-65535 之间的数字</li>
+                    <li>用户名和密码可以为空</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+    <script src="settings.js"></script>
+</body>
+</html> 
