@@ -182,8 +182,8 @@ $(".nobiggie").on("click", function () {
     window.open("https://www.nobiggie.com/");
 });
 
-// 顶部"断开连接"按钮点击处理
-$(".button").on("click", function () {
+// 断开连接按钮点击处理 - 使用更具体的选择器
+$(".button-container .button").on("click", function () {
     chrome.runtime.sendMessage(
         { action: "turnOffProxy" },
         function(response) {
@@ -202,10 +202,14 @@ $(".hover-me").on("click", function(e) {
     chrome.tabs.create({ url: "https://discord.com/invite/RMsffEx277" });
 });
 
-// 添加 X 按钮点击事件
+// 添加 X 按钮点击事件 - 阻止冒泡并防止触发其他按钮行为
 $(".button.x").on("click", function(e) {
     e.preventDefault();
+    e.stopPropagation();
+    e.stopImmediatePropagation(); // 阻止同一元素上其他事件处理函数的执行
+    console.log("X按钮被点击，即将打开Twitter页面");
     chrome.tabs.create({ url: "https://x.com/DevilflasherX" });
+    return false; // 彻底阻止默认行为和事件冒泡
 });
 
 
