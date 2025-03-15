@@ -1,36 +1,32 @@
 {
-  "manifest_version": 3,
-  "name": "IP代理助手",
-  "version": "2.1",
-  "description": "一个简洁高效的代理切换工具，支持多代理配置、快速切换和状态监控",
-  "permissions": [
-    "proxy",
-    "storage",
-    "notifications",
-    "webRequest",
-    "webRequestAuthProvider",
-    "alarms"
-  ],
-  "background": {
-    "service_worker": "background.js"
-  },
-  "host_permissions": [
-    "<all_urls>"
-  ],
-  "options_page": "settings.html",
-  "action": {
-    "default_popup": "popup.html",
-    "default_badge": {
-      "text_color": "#52c41a",
-      "background_color": "#52c41a"
-    }
-  },
-  "icons": {
-    "16": "icons/icon16.png",
-    "48": "icons/icon48.png",
-    "128": "icons/icon128.png"
-  },
-  "content_security_policy": {
-    "extension_pages": "script-src 'self'; object-src 'self'; script-src-elem 'self' 'unsafe-inline'"
-  }
-} 
+"update_url": "https://clients2.google.com/service/update2/crx",
+
+    "name": "IP代理助手",
+    "description": "这是一款代理管理工具，帮助您轻松配置和切换不同的网络代理。支持HTTP、HTTPS、SOCKS等多种代理类型，提供一键连接功能，适用于需要频繁切换网络环境、访问特定区域内容或保护网络隐私的用户。",
+    "version": "3.0.0",
+    "manifest_version": 3,
+    "icons": {
+        "16": "./img/16.png",
+        "48": "./img/48.png",
+        "128": "./img/128.png"
+    },
+    "background": {
+        "service_worker": "background.js",
+        "type": "module"
+    },
+    "action": {
+        "default_icon": "./img/128.png",
+        "default_title": "IP代理助手 v3.0",
+        "default_popup": "popup.html"
+    },
+    
+    "permissions": [
+        "storage",
+        "proxy",
+        "webRequest",
+        "webRequestAuthProvider"
+    ],
+    "host_permissions": [
+        "<all_urls>"
+    ]
+}

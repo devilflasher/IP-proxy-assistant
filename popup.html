@@ -1,72 +1,370 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
+
 <head>
-    <meta charset="UTF-8">
-    <link rel="stylesheet" href="styles.css">
-    <title>IP代理助手</title>
+  <meta charset="utf-8" />
+  <title>IP代理助手</title>
+  <script src="./js/jquery.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
+  <link href="./css/switch.css" rel="stylesheet">
+  <link href="./css/bottom-buttons.css" rel="stylesheet">
+  <style>
+    :root {
+      --main-font-family: "Noto Sans SC", "Source Han Sans SC", "Source Han Sans CN", "思源黑体", "PingFang SC", "Helvetica Neue", "Microsoft YaHei", "微软雅黑", sans-serif;
+    }
+  </style>
 </head>
+
 <body>
-    <div class="container">
-        <!-- 顶部标题栏 -->
-        <div class="header">
-            <div class="title-with-logo">
-                <img src="icons/icon48.png" alt="logo" class="logo">
-                <h1>IP代理助手 v2.1</h1>
-            </div>
-            <button id="settingsBtn" class="filter" title="设置">
-                <svg viewBox="0 0 512 512" height="1em">
-                    <path d="M0 416c0 17.7 14.3 32 32 32l54.7 0c12.3 28.3 40.5 48 73.3 48s61-19.7 73.3-48L480 448c17.7 0 32-14.3 32-32s-14.3-32-32-32l-246.7 0c-12.3-28.3-40.5-48-73.3-48s-61 19.7-73.3 48L32 384c-17.7 0-32 14.3-32 32zm128 0a32 32 0 1 1 64 0 32 32 0 1 1 -64 0zM320 256a32 32 0 1 1 64 0 32 32 0 1 1 -64 0zm32-80c-32.8 0-61 19.7-73.3 48L32 224c-17.7 0-32 14.3-32 32s14.3 32 32 32l246.7 0c12.3 28.3 40.5 48 73.3 48s61-19.7 73.3-48l54.7 0c17.7 0 32-14.3 32-32s-14.3-32-32-32l-54.7 0c-12.3-28.3-40.5-48-73.3-48zM192 128a32 32 0 1 1 0-64 32 32 0 1 1 0 64zm73.3-64C253 35.7 224.8 16 192 16s-61 19.7-73.3 48L32 64C14.3 64 0 78.3 0 96s14.3 32 32 32l86.7 0c12.3 28.3 40.5 48 73.3 48s61-19.7 73.3-48L480 128c17.7 0 32-14.3 32-32s-14.3-32-32-32L265.3 64z"></path>
-                </svg>
-            </button>
-        </div>
-
-        <!-- IP选择区域 -->
-        <div class="proxy-section">
-            <select class="ip-select">
-                <option value="">选择代理IP</option>
-                <option value="ip1">192.168.1.1:8080</option>
-                <option value="ip2">10.0.0.1:3128</option>
-            </select>
-
-            <!-- 开关按钮 -->
-            <label class="switch">
-                <input type="checkbox" class="toggle">
-                <span class="slider"></span>
-                <span class="card-side"></span>
-            </label>
-        </div>
-
-        <!-- IP状态信息 -->
-        <div class="status-section">
-            <div class="status-item">
-                <span>当前IP:</span>
-                <span class="ip-value"></span>
-            </div>
-            <div class="status-item">
-                <span>连接状态:</span>
-                <span class="status-value"></span>
-            </div>
-        </div>
-
-        <!-- 底部按钮区域 -->
-        <div class="bottom-buttons">
-            <!-- 左侧悬浮提示按钮 -->
-            <div class="hover-container">
-                <a href="https://discord.com/invite/RMsffEx277" target="_blank" class="hover-me">NoBiggie社区</a>
-                <div class="tooltip">
-                    <p>加入我们吧！👋</p>
-                </div>
-            </div>
-            
-            <!-- 右侧X按钮 -->
-            <a href="https://x.com/DevilflasherX" target="_blank" class="button x">
-                <svg viewBox="0 0 16 16" class="bi bi-twitter-x" fill="currentColor" height="16" width="16" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M12.6.75h2.454l-5.36 6.142L16 15.25h-4.937l-3.867-5.07-4.425 5.07H.316l5.733-6.57L0 .75h5.063l3.495 4.633L12.601.75Zm-.86 13.028h1.36L4.323 2.145H2.865z"></path>
-                </svg>
-                @ devilflasher
-            </a>
-        </div>
+  <div class="box">
+    <div class="logo">
+      <img src="./img/logo.png" alt="logo" />
+      <div class="settings-container">
+        <button title="设置" class="filter">
+          <svg viewBox="0 0 512 512" height="1em">
+            <path
+              d="M0 416c0 17.7 14.3 32 32 32l54.7 0c12.3 28.3 40.5 48 73.3 48s61-19.7 73.3-48L480 448c17.7 0 32-14.3 32-32s-14.3-32-32-32l-246.7 0c-12.3-28.3-40.5-48-73.3-48s-61 19.7-73.3 48L32 384c-17.7 0-32 14.3-32 32zm128 0a32 32 0 1 1 64 0 32 32 0 1 1 -64 0zM320 256a32 32 0 1 1 64 0 32 32 0 1 1 -64 0zm32-80c-32.8 0-61 19.7-73.3 48L32 224c-17.7 0-32 14.3-32 32s14.3 32 32 32l246.7 0c12.3 28.3 40.5 48 73.3 48s61-19.7 73.3-48l54.7 0c17.7 0 32-14.3 32-32s-14.3-32-32-32l-54.7 0c-12.3-28.3-40.5-48-73.3-48zM192 128a32 32 0 1 1 0-64 32 32 0 1 1 0 64zm73.3-64C253 35.7 224.8 16 192 16s-61 19.7-73.3 48L32 64C14.3 64 0 78.3 0 96s14.3 32 32 32l86.7 0c12.3 28.3 40.5 48 73.3 48s61-19.7 73.3-48L480 128c17.7 0 32-14.3 32-32s-14.3-32-32-32L265.3 64z"
+            ></path>
+          </svg>
+        </button>
+      </div>
     </div>
-    <script src="popup.js"></script>
+
+    <div class="init_box">
+      <div class="txt">
+        您还没有添加代理
+      </div>
+
+      <div class="add_btn">
+        + 添加新代理
+      </div>
+
+      <!-- 底部按钮区域 -->
+      <div class="bottom-buttons">
+          <!-- 左侧悬浮提示按钮 -->
+          <div class="hover-container">
+              <a href="https://discord.com/invite/RMsffEx277" target="_blank" class="hover-me">NoBiggie社区</a>
+              <div class="tooltip">
+                  <p>加入我们吧！👋</p>
+              </div>
+          </div>
+          
+          <!-- 右侧X按钮 -->
+          <a href="https://x.com/DevilflasherX" target="_blank" class="button x">
+              <svg viewBox="0 0 16 16" class="bi bi-twitter-x" fill="currentColor" height="16" width="16" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M12.6.75h2.454l-5.36 6.142L16 15.25h-4.937l-3.867-5.07-4.425 5.07H.316l5.733-6.57L0 .75h5.063l3.495 4.633L12.601.75Zm-.86 13.028h1.36L4.323 2.145H2.865z"></path>
+              </svg>
+              @ devilflasher
+          </a>
+      </div>
+    </div>
+
+    <div class="set_box">
+
+      <div class="set_box_top">
+        <div class="open_1">
+          <div class="set_box_tip">
+            <div class="red_dian"></div>未连接任何代理
+          </div>
+        </div>
+
+        <div class="open_2" style="display: none;">
+          <div class="connection-info">
+            <div class="set_box_tip">
+              <div class="blur_dian"></div>
+              <span class="open_user"></span>
+            </div>
+            <div class="open_ip"></div>
+          </div>
+          <div class="button-container">
+            <button class="button">断开连接</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="set_box_user">
+        <div class="set_box_user_title">选择代理</div>
+
+        <div class="set_box_user_list">
+
+
+        </div>
+
+        <div class="set_box_user_bottom">
+          <!-- 底部按钮区域 -->
+          <div class="bottom-buttons list-bottom-buttons">
+              <!-- 左侧悬浮提示按钮 -->
+              <div class="hover-container">
+                  <a href="https://discord.com/invite/RMsffEx277" target="_blank" class="hover-me">NoBiggie社区</a>
+                  <div class="tooltip">
+                      <p>加入我们吧！👋</p>
+                  </div>
+              </div>
+              
+              <!-- 右侧X按钮 -->
+              <a href="https://x.com/DevilflasherX" target="_blank" class="button x">
+                  <svg viewBox="0 0 16 16" class="bi bi-twitter-x" fill="currentColor" height="16" width="16" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M12.6.75h2.454l-5.36 6.142L16 15.25h-4.937l-3.867-5.07-4.425 5.07H.316l5.733-6.57L0 .75h5.063l3.495 4.633L12.601.75Zm-.86 13.028h1.36L4.323 2.145H2.865z"></path>
+                  </svg>
+                  @ devilflasher
+              </a>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
 </body>
-</html> 
+
+<script type="text/javascript" src="./js/popup.js"></script>
+
+<style>
+  h1 {
+    padding: 0;
+    margin: 0;
+    font-size: 14px;
+    margin-left: 20px;
+  }
+
+  html,
+  body {
+    padding: 0;
+    margin: 0;
+    text-align: center;
+    font-size: 14px;
+    border-radius: 16px;
+    font-family: var(--main-font-family);
+  }
+
+  .box {
+    width: 350px;
+    overflow: visible;
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    width: 330px;
+    height: 70px;
+    background-color: #212121;
+    color: #fff;
+    padding-left: 20px;
+    position: relative;
+  }
+
+  .settings-container {
+    position: absolute;
+    right: 25px;
+    top: 50%;
+    transform: translateY(-50%);
+  }
+
+  .filter {
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    cursor: pointer;
+    box-shadow: 0px 5px 5px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s;
+    background-color: rgb(59, 59, 59);
+  }
+
+  .filter svg {
+    height: 16px;
+    fill: white;
+    transition: all 0.3s;
+  }
+
+  .filter:hover {
+    box-shadow: 0px 5px 5px rgba(0, 0, 0, 0.2);
+    background-color: rgb(240, 240, 240);
+    border: 1px solid rgba(0, 0, 0, 0.192);
+  }
+
+  .filter:hover svg {
+    fill: rgb(77, 77, 77);
+  }
+
+  .txt {
+    width: 218px;
+    font-size: 20px;
+    line-height: 18.486px;
+    letter-spacing: 0px;
+    color: #120f34;
+    margin: 0 auto;
+    margin-top: 45px;
+  }
+
+  .add_btn {
+    width: 217px;
+    height: 43px;
+    line-height: 43px;
+    background-color: #4164f5;
+    border-radius: 4px;
+    margin: 0 auto;
+    margin-top: 20px;
+    font-size: 16px;
+    font-weight: 600;
+    color: #ffffff;
+    cursor: pointer;
+  }
+
+  .init_box {
+    display: none;
+  }
+
+  .set_box {
+    width: 100%;
+    overflow: visible;
+  }
+
+  .set_box_top {
+    width: 350px;
+    height: 79px;
+    background-color: #212121;
+    display: flex;
+    align-items: center;
+    overflow: visible;
+    position: relative;
+    justify-content: space-between;
+    padding: 0 25px 0 25px;
+    box-sizing: border-box;
+  }
+
+  .red_dian {
+    width: 8px;
+    height: 8px;
+    background-color: #e01213;
+    border-radius: 50%;
+    font-size: 14px;
+    font-weight: 600;
+    color: #ffffff;
+    margin-right: 10px;
+  }
+
+  .blur_dian {
+    width: 8px;
+    height: 8px;
+    background-color: #4164f5;
+    border-radius: 50%;
+    margin-right: 10px;
+  }
+
+  .set_box_tip {
+    display: flex;
+    align-items: center;
+    font-size: 14px;
+    font-weight: 600;
+    color: #ffffff;
+    margin-left: 0;
+  }
+
+  .set_box_user {
+    width: 330px;
+    margin: 0 auto;
+    text-align: left;
+    padding: 0 15px;
+    box-sizing: border-box;
+  }
+
+  .set_box_user_title {
+    font-size: 14px;
+    font-weight: 600;
+    color: #333333;
+    margin-top: 26px;
+    padding-left: 15px;
+  }
+
+  .set_box_user_box {
+    width: 300px;
+    height: 66px;
+    background-color: #ffffff;
+    border-radius: 8px;
+    border: solid 1px #d9d9d9;
+    margin: 0 auto;
+    margin-top: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 15px;
+    box-sizing: border-box;
+  }
+
+  .set_box_user_bottom {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 14px;
+    font-weight: 600;
+    color: #dd1214;
+    margin-top: 30px;
+    margin-bottom: 40px;
+    width: 100%;
+    padding: 0;
+  }
+
+  .set_box_user_bottom>div {
+    cursor: pointer;
+  }
+
+  .name_txt {
+    width: 200px;
+    font-weight: 600;
+  }
+
+  .ip_txt {
+    width: 200px;
+    color: #999;
+  }
+
+  .open_2 {
+    display: flex;
+    align-items: center;
+    overflow: visible;
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .connection-info {
+    text-align: left;
+  }
+
+  .button-container {
+    margin-right: 0;
+    overflow: visible;
+  }
+
+  .open_ip {
+    width: 180px;
+    font-size: 14px;
+    color: #ffffff;
+    margin-left: 18px;
+    text-align: left;
+  }
+
+  .box .bg1 {
+    background-color: #d9e6fe;
+  }
+
+  .box .bg2 {
+    background-color: #fff;
+  }
+
+  .nobiggie {
+    cursor: pointer;
+  }
+
+  /* 确保底部按钮与代理列表项对齐 */
+  .list-bottom-buttons {
+    width: 300px;
+    margin: 0 auto;
+  }
+</style>
+
+</html>

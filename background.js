@@ -1,434 +1,333 @@
-// 监听代理状态变化
-chrome.storage.local.onChanged.addListener(function(changes) {
-    if (changes.proxyState) {
-        const newState = changes.proxyState.newValue;
-        if (newState && newState.enabled) {
-            // 开启代理时检查 TUN 模式
-            checkTunModeAndNotify();
-            applyProxySettings(newState.ip);
-            setBadgeEnabled(newState.ip);
-        } else {
-            clearProxySettings();
-            chrome.action.setBadgeText({ text: '' });
-        }
-    }
+// NoBiggie Proxy Extension - Background Service Worker
+// 实现Manifest V3标准的代理功能
+
+// 监听插件安装或更新事件
+chrome.runtime.onInstalled.addListener(() => {
+  console.log('NoBiggie Proxy Extension installed/updated');
+  // 初始化时关闭代理
+  turnOffProxy();
 });
 
-// 添加安装和启动时的初始化
-chrome.runtime.onInstalled.addListener(initialize);
-chrome.runtime.onStartup.addListener(initialize);
-
-// 统一的初始化函数
-function initialize() {
-    checkBrowserCompatibility();
-    
-    // 替换原来的 initializeProxy 内容
-    chrome.storage.local.get(['proxyState', 'proxyConfigs'], async function(result) {
-        if (result.proxyState && result.proxyState.enabled) {
-            await checkTunModeAndNotify();
-            applyProxySettings(result.proxyState.ip);
-            setBadgeEnabled(result.proxyState.ip);
-        }
-    });
-    
-    startTunModeCheck();
-    setupMacProxyCheck();
-}
-
-let activeAuth = null;
-let lastTunCheck = 0;
-let lastTunCheckResult = null;
-const TUN_CHECK_INTERVAL = 30000;
-let hasShownTunNotification = false;
-
-// 优化认证回调函数，增加缓存机制
-const authCallbackCache = new Map();
-const AUTH_CACHE_TIMEOUT = 300000; // 5分钟缓存
-
-const authCallback = function(details) {
-    if (!details.isProxy || !activeAuth) {
-        return {};
+// 浏览器启动时恢复之前的代理设置
+chrome.runtime.onStartup.addListener(() => {
+  console.log('Chrome started, checking for saved proxy settings');
+  chrome.storage.local.get(['currentProxy', 'proxyEnabled'], (result) => {
+    if (result.proxyEnabled && result.currentProxy) {
+      console.log('Restoring saved proxy settings');
+      applyProxySettings(result.currentProxy);
+    } else {
+      // 确保角标被清除
+      clearBadge();
     }
+  });
+});
 
-    const requestHost = details.challenger?.host;
-    if (!requestHost) {
-        return {};
-    }
-
-    // 检查缓存
-    const cacheKey = `${requestHost}_${activeAuth.ip}`;
-    const cachedAuth = authCallbackCache.get(cacheKey);
-    if (cachedAuth) {
-        return cachedAuth;
-    }
-
-    // 匹配逻辑
-    if (requestHost === activeAuth.ip || 
-        requestHost === activeAuth.ip.split(':')[0] ||
-        requestHost === activeAuth.ip.split('.')[0]) {
-        
-        const authResponse = {
-            authCredentials: {
-                username: activeAuth.username,
-                password: activeAuth.password
-            }
-        };
-
-        // 缓存认证结果
-        authCallbackCache.set(cacheKey, authResponse);
-        setTimeout(() => authCallbackCache.delete(cacheKey), AUTH_CACHE_TIMEOUT);
-
-        return authResponse;
-    }
-
-    return {};
+// 全局变量存储当前代理认证信息
+let currentProxyAuth = {
+  username: '',
+  password: ''
 };
 
-// 优化认证设置函数
-function setupAuthentication(proxyIp, proxyConfigs) {
-    try {
-        // 清理旧的认证状态
-        clearAuthenticationState();
+// 预连接测试URL列表 - 用于预热代理连接
+const TEST_URLS = [
+  'https://www.google.com/favicon.ico',
+  'https://www.twitter.com/favicon.ico',
+  'https://www.example.com/favicon.ico'
+];
 
-        const config = proxyConfigs?.find(c => c.ip === proxyIp);
-        if (config?.username && config?.password) {
-            activeAuth = {
-                ip: proxyIp,
-                username: config.username,
-                password: config.password,
-                timestamp: Date.now()
-            };
-
-            chrome.webRequest.onAuthRequired.addListener(
-                authCallback,
-                { urls: ["<all_urls>"] },
-                ['blocking']
-            );
-
-            console.debug('认证设置成功:', proxyIp);
-            return true;
-        }
-        return false;
-    } catch (error) {
-        console.debug('设置认证时出现异常:', error);
-        clearAuthenticationState();
-        return false;
-    }
+// 设置扩展图标角标，显示当前代理名称
+function setBadgeWithProxyName(proxyName) {
+  if (!proxyName) {
+    console.log("No proxy name provided, not setting badge");
+    return;
+  }
+  
+  // 设置角标文本（代理名称）
+  chrome.action.setBadgeText({ text: proxyName });
+  
+  // 设置角标背景色为白色
+  chrome.action.setBadgeBackgroundColor({ color: "#FFFFFF" });
+  
+  // 设置角标文本颜色为黑色
+  chrome.action.setBadgeTextColor({ color: "#000000" });
+  
+  console.log(`Badge set with proxy name: ${proxyName}`);
 }
 
-// 添加认证状态清理函数
-function clearAuthenticationState() {
-    if (chrome.webRequest?.onAuthRequired?.hasListener(authCallback)) {
-        chrome.webRequest.onAuthRequired.removeListener(authCallback);
-    }
-    activeAuth = null;
-    authCallbackCache.clear();
+// 清除扩展图标角标
+function clearBadge() {
+  chrome.action.setBadgeText({ text: "" });
+  console.log("Badge cleared");
 }
 
-// 验证代理配置是否有效
-function isValidProxyConfig(config) {
-    return config 
-        && config.ip 
-        && config.port 
-        && config.protocol 
-        && /^\d+$/.test(config.port) 
-        && parseInt(config.port) > 0 
-        && parseInt(config.port) <= 65535;
-}
+// 处理不同类型的代理设置
+function applyProxySettings(proxyInfo) {
+  if (!proxyInfo) {
+    console.error("No proxy info provided, turning off proxy");
+    turnOffProxy();
+    return;
+  }
 
-// 统一的 TUN 模式检查状态管理
-const tunModeState = {
-    lastCheckTime: 0,
-    lastCheckResult: null,
-    checkInProgress: false,
-    hasShownNotification: false,
-    CHECK_INTERVAL: 30000
-};
+  const type = proxyInfo.select || proxyInfo.type;
+  const ip = proxyInfo.Proxy_ip || proxyInfo.ip;
+  const port = proxyInfo.Port || proxyInfo.port;
+  const username = proxyInfo.Username || proxyInfo.username;
+  const password = proxyInfo.Password || proxyInfo.password;
+  const proxyName = proxyInfo.Enter_name || proxyInfo.name || "";
 
-// 优化后的 TUN 模式检查函数
-async function checkTunMode() {
-    const now = Date.now();
-    if (tunModeState.lastCheckResult !== null && 
-        (now - tunModeState.lastCheckTime) < tunModeState.CHECK_INTERVAL) {
-        return tunModeState.lastCheckResult;
+  console.log("Proxy info received:", JSON.stringify({
+    type: type,
+    ip: ip,
+    port: port,
+    hasUsername: !!username,
+    hasPassword: !!password,
+    name: proxyName
+  }));
+
+  if (!type || !ip || !port) {
+    console.error("Missing required proxy information");
+    console.error("Type:", type);
+    console.error("IP:", ip);
+    console.error("Port:", port);
+    return;
+  }
+
+  // 验证代理类型
+  const validTypes = ["http", "https", "socks", "socks4", "socks5"];
+  let proxyScheme = type.toLowerCase();
+  
+  if (!validTypes.includes(proxyScheme)) {
+    console.error("Invalid proxy type:", proxyScheme);
+    console.log("Defaulting to http proxy");
+    proxyScheme = "http";
+  }
+
+  // 验证端口
+  let portNumber = parseInt(port);
+  if (isNaN(portNumber) || portNumber <= 0 || portNumber > 65535) {
+    console.error("Invalid port number:", port);
+    return;
+  }
+
+  console.log(`Applying proxy settings: ${proxyScheme} ${ip}:${portNumber}`);
+
+  // 保存认证信息到全局变量，用于直接访问
+  currentProxyAuth = {
+    username: username || '',
+    password: password || ''
+  };
+
+  // 保存当前代理信息到本地存储，用于恢复
+  chrome.storage.local.set({
+    currentProxy: {
+      type: type,
+      ip: ip,
+      port: port,
+      username: username,
+      password: password,
+      name: proxyName
+    },
+    proxyEnabled: true
+  });
+
+  // 设置扩展图标角标，显示当前代理名称
+  setBadgeWithProxyName(proxyName);
+
+  // 先设置认证监听器，确保在代理设置应用前已准备好处理认证请求
+  setupAuthListener();
+
+  // 根据代理类型设置不同的配置
+  const config = {
+    mode: "fixed_servers",
+    rules: {
+      singleProxy: {
+        scheme: proxyScheme,
+        host: ip,
+        port: portNumber
+      },
+      bypassList: ["localhost", "127.0.0.1", "<local>"]
     }
+  };
 
-    if (tunModeState.checkInProgress) {
-        return tunModeState.lastCheckResult ?? true;
-    }
-
-    tunModeState.checkInProgress = true;
-    try {
-        const response = await fetch('https://www.google.com/generate_204', {
-            method: 'HEAD',
-            cache: 'no-store',
-            mode: 'no-cors',
-            timeout: 5000
-        });
-        tunModeState.lastCheckResult = response.status === 204;
-    } catch (e) {
-        tunModeState.lastCheckResult = false;
-    } finally {
-        tunModeState.checkInProgress = false;
-        tunModeState.lastCheckTime = now;
-    }
-    return tunModeState.lastCheckResult;
-}
-
-// 修改 TUN 模式通知函数
-let lastNotificationTime = 0;
-function showTunModeNotification() {
-    const now = Date.now();
-    // 限制通知频率为每5分钟最多一次
-    if (now - lastNotificationTime < 300000) {
+  // 设置代理配置
+  chrome.proxy.settings.set(
+    { value: config, scope: "regular" },
+    () => {
+      if (chrome.runtime.lastError) {
+        console.error("Error setting proxy:", chrome.runtime.lastError);
+        clearBadge();
         return;
+      }
+      
+      console.log(`${type} proxy enabled`);
+      
+      // 验证代理设置是否成功应用
+      chrome.proxy.settings.get({}, (details) => {
+        console.log("Current proxy settings:", JSON.stringify(details));
+        
+        // 预热代理连接，避免后续访问时弹出认证窗口
+        preconnectToTestUrls();
+      });
     }
-    
-    lastNotificationTime = now;
-    chrome.notifications.create({
-        type: 'basic',
-        iconUrl: 'icons/icon128.png',
-        title: 'TUN 模式未开启',
-        message: '检测到系统 TUN 模式未开启，这可能会影响代理功能。请检查并启用 TUN 模式以确保最佳体验。',
-        priority: 1
-    });
+  );
 }
 
-// 使用全局变量替代 window 对象
-let hasTunModeListener = false;
-
-// 修改 TUN 模式检查函数
-async function checkTunModeAndNotify() {
-    const isTunEnabled = await checkTunMode();
-    
-    // 获取当前代理状态
-    chrome.storage.local.get(['proxyState'], function(result) {
-        if (result.proxyState?.enabled && !isTunEnabled) {
-            showTunModeNotification();
-        }
+// 预热代理连接，避免后续访问时弹出认证窗口
+function preconnectToTestUrls() {
+  console.log("Preconnecting to test URLs to warm up proxy connection");
+  
+  // 创建一个隐藏的iframe来加载测试URL
+  TEST_URLS.forEach(url => {
+    fetch(url, { 
+      method: 'HEAD',
+      mode: 'no-cors',
+      cache: 'no-store'
+    }).catch(err => {
+      // 忽略错误，这只是为了预热连接
+      console.log(`Preconnect to ${url} completed (errors are expected)`);
     });
-    
-    return isTunEnabled;
+  });
 }
 
-// 优化后的 TUN 模式检查启动函数
-function startTunModeCheck() {
-    // 初始检查
-    checkTunModeAndNotify();
+// 设置认证监听器
+function setupAuthListener() {
+  // 先移除之前的认证监听器
+  try {
+    chrome.webRequest.onAuthRequired.removeListener(handleAuthRequest);
+  } catch (e) {
+    console.log("No previous auth listener to remove");
+  }
+
+  // 添加新的认证监听器 - 在Manifest V3中使用asyncBlocking
+  chrome.webRequest.onAuthRequired.addListener(
+    handleAuthRequest,
+    { urls: ["<all_urls>"] },
+    ["asyncBlocking"]
+  );
+
+  console.log("Auth listener set up with asyncBlocking");
+}
+
+// 认证回调函数 - 使用回调方式处理认证请求
+function handleAuthRequest(details, callback) {
+  console.log("Auth request received for: " + details.url);
+  
+  // 只处理代理认证请求
+  if (details.isProxy) {
+    console.log("Handling proxy auth request");
     
-    // 只添加一次窗口焦点监听
-    if (!hasTunModeListener) {
-        chrome.windows.onFocusChanged.addListener((windowId) => {
-            if (windowId !== chrome.windows.WINDOW_ID_NONE) {
-                checkTunModeAndNotify();
-            }
+    if (currentProxyAuth.username && currentProxyAuth.password) {
+      console.log("Providing auth credentials for: " + currentProxyAuth.username);
+      
+      // 使用setTimeout确保回调在事件循环的下一个周期执行
+      // 这有助于避免某些情况下的认证窗口闪现
+      setTimeout(() => {
+        callback({
+          authCredentials: {
+            username: currentProxyAuth.username,
+            password: currentProxyAuth.password
+          }
         });
-        hasTunModeListener = true;
-    }
-}
-
-// 移除重复的事件监听
-chrome.windows.onFocusChanged.removeListener((windowId) => {
-    if (windowId !== chrome.windows.WINDOW_ID_NONE) {
-        checkTunModeAndNotify();
-    }
-});
-
-// 添加系统检测
-const isMac = navigator.userAgentData?.platform === 'macOS' || 
-              /Mac|iPhone|iPad|iPod/.test(navigator.userAgent);
-
-// 首次安装时的提示
-chrome.runtime.onInstalled.addListener(function(details) {
-    if (details.reason === "install") {
-        if (isMac) {
-            chrome.notifications.create({
-                type: 'basic',
-                iconUrl: 'icons/icon48.png',
-                title: '欢迎使用 IP代理助手',
-                message: 'Mac用户请注意：首次使用时可能需要在系统偏好设置中允许代理更改。'
+      }, 0);
+    } else {
+      // 如果没有认证信息，尝试从存储中获取
+      chrome.storage.local.get(['currentProxy'], (result) => {
+        if (result.currentProxy && 
+            result.currentProxy.username && 
+            result.currentProxy.password) {
+          
+          // 更新全局变量
+          currentProxyAuth.username = result.currentProxy.username;
+          currentProxyAuth.password = result.currentProxy.password;
+          
+          console.log("Retrieved auth credentials from storage");
+          
+          setTimeout(() => {
+            callback({
+              authCredentials: {
+                username: result.currentProxy.username,
+                password: result.currentProxy.password
+              }
             });
+          }, 0);
+        } else {
+          console.log("No auth credentials available");
+          callback({cancel: false});
         }
+      });
     }
-});
-
-// 添加统一的错误提示函数
-function showErrorNotification(message) {
-    chrome.notifications.create({
-        type: 'basic',
-        iconUrl: 'icons/icon48.png',
-        title: '代理设置提示',
-        message: message
-    });
+  } else {
+    console.log("Not a proxy auth request");
+    callback({cancel: false});
+  }
 }
 
-// 添加代理连接超时检测
-function checkProxyConnection(proxyIp) {
-    return new Promise((resolve) => {
-        const timeoutDuration = 10000; // 10秒超时
-        const timeout = setTimeout(() => {
-            resolve(false);
-        }, timeoutDuration);
+// 关闭代理
+function turnOffProxy() {
+  const config = {
+    mode: "system"
+  };
 
-        fetch('http://www.google.com', {
-            mode: 'no-cors',
-            cache: 'no-cache'
-        }).then(() => {
-            clearTimeout(timeout);
-            resolve(true);
-        }).catch(() => {
-            clearTimeout(timeout);
-            resolve(false);
+  // 清除认证信息
+  currentProxyAuth = {
+    username: '',
+    password: ''
+  };
+
+  // 标记代理为已禁用
+  chrome.storage.local.set({proxyEnabled: false});
+
+  // 清除扩展图标角标
+  clearBadge();
+
+  // 移除认证监听器
+  try {
+    chrome.webRequest.onAuthRequired.removeListener(handleAuthRequest);
+  } catch (e) {
+    console.log("No auth listener to remove");
+  }
+
+  chrome.proxy.settings.set(
+    { value: config, scope: "regular" },
+    () => {
+      console.log("Proxy turned off");
+    }
+  );
+}
+
+// 监听来自popup或设置页面的消息
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  console.log("Message received:", message.action);
+  
+  try {
+    if (message.action === "applyProxy") {
+      if (!message.proxyInfo) {
+        console.error("No proxy info in message");
+        sendResponse({ success: false, error: "No proxy info provided" });
+        return true;
+      }
+      
+      applyProxySettings(message.proxyInfo);
+      sendResponse({ success: true });
+    } else if (message.action === "turnOffProxy") {
+      turnOffProxy();
+      sendResponse({ success: true });
+    } else if (message.action === "getProxyStatus") {
+      chrome.storage.local.get(['proxyEnabled', 'currentProxy'], (result) => {
+        sendResponse({ 
+          enabled: result.proxyEnabled || false,
+          proxyInfo: result.currentProxy || null
         });
-    });
-}
-
-// 优化代理设置函数
-function applyProxySettings(proxyIp) {
-    chrome.storage.local.get(['proxyConfigs'], function(result) {
-        const config = result.proxyConfigs?.find(c => c.ip === proxyIp);
-        if (!config) {
-            console.debug('未找到代理配置:', proxyIp);
-            return;
-        }
-
-        // 先设置认证
-        const authSuccess = setupAuthentication(proxyIp, result.proxyConfigs);
-        if (!authSuccess && config.username && config.password) {
-            console.debug('认证设置失败');
-            showErrorNotification('代理认证设置失败，请检查配置');
-            return;
-        }
-
-        const proxyConfig = {
-            mode: "fixed_servers",
-            rules: {
-                singleProxy: {
-                    scheme: config.protocol.toLowerCase(),
-                    host: config.ip,
-                    port: parseInt(config.port)
-                },
-                bypassList: isMac ? 
-                    ["localhost", "127.0.0.1", "*.local"] : 
-                    ["localhost", "127.0.0.1"]
-            }
-        };
-
-        // 设置代理
-        chrome.proxy.settings.set(
-            { value: proxyConfig, scope: 'regular' },
-            function() {
-                if (chrome.runtime.lastError) {
-                    console.debug('代理设置失败:', chrome.runtime.lastError);
-                    clearAuthenticationState();
-                    if (isMac) {
-                        showErrorNotification('代理设置失败，请检查系统网络设置');
-                    } else {
-                        showErrorNotification('代理设置失败，请检查网络连接');
-                    }
-                } else {
-                    console.debug('代理设置成功:', proxyIp);
-                    // 验证代理连接
-                    checkProxyConnection(proxyIp).then(isConnected => {
-                        if (!isConnected) {
-                            showErrorNotification('代理连接失败，请检查网络或配置');
-                            clearProxySettings();
-                        }
-                    });
-                }
-            }
-        );
-    });
-}
-
-// 优化清除代理设置函数
-function clearProxySettings() {
-    clearAuthenticationState();
-    console.debug('认证信息已清除');
-
-    chrome.proxy.settings.clear(
-        { scope: 'regular' },
-        function() {
-            if (chrome.runtime.lastError) {
-                console.debug('清除代理设置失败:', chrome.runtime.lastError);
-            } else {
-                console.debug('代理设置已清除');
-            }
-        }
-    );
-}
-
-// 监听来自 popup 的消息
-chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-    if (request.action === "setProxy") {
-        applyProxySettings(request.proxyIp);
-        sendResponse({ success: true });
-    } else if (request.action === "clearProxy") {
-        clearProxySettings();
-        sendResponse({ success: true });
+      });
+      return true; // 保持消息通道开放以进行异步响应
+    } else {
+      console.warn("Unknown action:", message.action);
+      sendResponse({ success: false, error: "Unknown action" });
     }
+  } catch (error) {
+    console.error("Error handling message:", error);
+    sendResponse({ success: false, error: error.message });
+  }
+  
+  return true;
 });
-
-// 修改设置图标状态的函数
-function setBadgeEnabled(proxyIp) {
-    chrome.storage.local.get(['proxyConfigs'], function(result) {
-        const config = result.proxyConfigs?.find(c => c.ip === proxyIp);
-        if (config && config.name) {
-            let badgeText = config.name;
-            // 如果是中文，最多显示2个字符
-            if (/[\u4e00-\u9fa5]/.test(badgeText)) {
-                badgeText = badgeText.substring(0, 2);
-            } else {
-                // 如果是数字或英文，最多显示4个字符
-                badgeText = badgeText.substring(0, 4);
-            }
-            chrome.action.setBadgeText({ text: badgeText });
-        }
-    });
-}
-
-// 添加浏览器版本检查
-function checkBrowserCompatibility() {
-    const userAgent = navigator.userAgent;
-    const chromeVersion = userAgent.match(/Chrome\/([0-9.]+)/);
-    
-    if (chromeVersion && chromeVersion[1]) {
-        const version = parseFloat(chromeVersion[1]);
-        if (version < 88) {  // 设置一个最低版本要求
-            console.warn('当前 Chrome 版本可能过低，建议升级到最新版本');
-            // 可以选择显示通知给用户
-            chrome.notifications.create({
-                type: 'basic',
-                iconUrl: 'icons/icon128.png',
-                title: '浏览器版本提示',
-                message: '建议将 Chrome 浏览器升级到最新版本，以确保最佳使用体验。',
-                priority: 1
-            });
-        }
-    }
-}
-
-// Mac 系统代理检查设置
-function setupMacProxyCheck() {
-    if (!isMac) return;
-    
-    chrome.alarms.create('checkMacProxy', { periodInMinutes: 5 });
-    chrome.alarms.onAlarm.addListener((alarm) => {
-        if (alarm.name === 'checkMacProxy') {
-            checkMacProxySettings();
-        }
-    });
-}
-
-// 添加 Mac 代理检查函数
-function checkMacProxySettings() {
-    chrome.storage.local.get(['proxyState'], function(result) {
-        if (result.proxyState?.enabled) {
-            chrome.proxy.settings.get({}, function(config) {
-                if (!config.value || config.value.mode !== 'fixed_servers') {
-                    showErrorNotification('系统代理设置可能已被更改，请检查系统网络设置。');
-                }
-            });
-        }
-    });
-} 

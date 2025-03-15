@@ -1,0 +1,66 @@
+/*------ Settings ------*/
+.container {
+  --color: #a5a5b0;
+  --size: 20px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+  cursor: pointer;
+  font-size: var(--size);
+  user-select: none;
+  fill: var(--color);
+  margin-left: 10px;
+  width: 38px;
+  height: 30px;
+}
+
+.container .eye {
+  position: absolute;
+  animation: keyframes-fill .5s;
+  width: 20px;
+  height: 20px;
+}
+
+.container .eye-slash {
+  position: absolute;
+  animation: keyframes-fill .5s;
+  display: none;
+  width: 20px;
+  height: 20px;
+}
+
+/* ------ On check event ------ */
+.container input:checked ~ .eye {
+  display: none;
+}
+
+.container input:checked ~ .eye-slash {
+  display: block;
+}
+
+/* ------ Hide the default checkbox ------ */
+.container input {
+  position: absolute;
+  opacity: 0;
+  cursor: pointer;
+  height: 0;
+  width: 0;
+}
+
+/* ------ Animation ------ */
+@keyframes keyframes-fill {
+  0% {
+    transform: scale(0);
+    opacity: 0;
+  }
+
+  50% {
+    transform: scale(1.2);
+  }
+}
+
+/* 悬停效果 */
+.container:hover {
+  --color: #4164f5;
+} 

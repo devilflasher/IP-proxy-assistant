@@ -1,0 +1,806 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <title>IP代理助手页面 V3.0-设置</title>
+    <!-- 尝试使用更简单的 favicon 路径 -->
+    <link rel="icon" type="image/png" href="./favicon/icon-192x192.png">
+    <link rel="shortcut icon" type="image/png" href="./favicon/icon-192x192.png">
+    <link href="./css/delete-button.css" rel="stylesheet">
+    <link href="./css/eye-button.css" rel="stylesheet">
+    <link href="./css/import-guide.css" rel="stylesheet">
+</head>
+
+<style>
+    .box {
+        max-width: 1070px;
+        margin: 0 auto;
+        padding-top: 40px;
+    }
+
+    .logo {
+        display: flex;
+        align-items: center;
+        width: 382px;
+        height: 70px;
+        color: #1e2854;
+        padding-left: 20px;
+    }
+
+    h1 {
+        padding: 0;
+        margin: 0;
+        font-size: 14px;
+        margin-left: 20px;
+    }
+
+    .t1 {
+        font-size: 18px;
+        font-weight: 600;
+        color: #333333;
+        margin-top: 90px;
+    }
+
+    .t2 {
+        font-size: 16px;
+        color: #333333;
+        margin-top: 18px;
+    }
+
+    .list_box {
+        width: 1070px;
+        background-color: #ffffff;
+        border-radius: 8px;
+        box-shadow: 0px 8px 20px 0px rgba(179, 184, 194, 0.32);
+        margin-top: 32px;
+    }
+
+    .flex {
+        display: flex;
+        align-items: center;
+    }
+
+    .list_title {
+        height: 48px;
+        font-size: 14px;
+        font-weight: 600;
+        color: #333333;
+    }
+
+    .list_title>div:nth-child(1) {
+        width: 197px;
+        padding-left: 50px;
+    }
+
+    .list_title>div:nth-child(2) {
+        width: 356px;
+    }
+
+    .box .el-select {
+        width: 96px;
+        height: 36px;
+        line-height: 36px;
+    }
+
+    .box .el-input__inner {
+        height: 36px;
+        line-height: 36px;
+    }
+
+    .box .el-input__icon {
+        line-height: 36px;
+    }
+
+    .Enter_name {
+        width: 145px;
+        height: 32px;
+        background-color: #ffffff;
+        border-radius: 4px;
+        border: solid 1px #e0e3e8;
+        padding-left: 20px;
+        margin-left: 20px;
+    }
+
+    .Proxy_ip {
+        width: 112px;
+        height: 32px;
+        background-color: #ffffff;
+        border-radius: 4px;
+        border: solid 1px #e0e3e8;
+        padding-left: 20px;
+        margin-left: 8px;
+    }
+
+    .Port {
+        width: 60px;
+        height: 32px;
+        background-color: #ffffff;
+        border-radius: 4px;
+        border: solid 1px #e0e3e8;
+        padding-left: 20px;
+        margin-left: 8px;
+    }
+
+    .Username {
+        width: 194px;
+        height: 32px;
+        background-color: #ffffff;
+        border-radius: 4px;
+        border: solid 1px #e0e3e8;
+        padding-left: 20px;
+    }
+
+    .Password {
+        width: 124px;
+        height: 32px;
+        background-color: #ffffff;
+        border-radius: 4px;
+        border: solid 1px #e0e3e8;
+        padding-left: 20px;
+        margin-left: 8px;
+    }
+
+    .list_a {
+        height: 80px;
+        background-color: #f5f7fa;
+        box-shadow: 0px 8px 20px 0px rgba(179, 184, 194, 0.32);
+        border-top: solid 1px #ddd;
+    }
+
+    .list_a>div:nth-child(1) {
+        width: 232px;
+        padding-left: 15px;
+    }
+
+    .list_a>div:nth-child(2) {
+        width: 356px;
+    }
+
+    .list_a>div:nth-child(3) {
+        display: flex;
+        align-items: center;
+        justify-content: flex-start;
+        padding-right: 15px;
+    }
+
+    .hide_btn,
+    .del {
+        margin-left: 10px;
+        cursor: pointer;
+    }
+
+    .add_proxy_btn {
+        width: 172px;
+        height: 43px;
+        border-radius: 4px;
+        border: solid 1px #1c1d1d;
+        line-height: 43px;
+        text-align: center;
+        font-size: 16px;
+        font-weight: 600;
+        color: #333333;
+        margin-right: 12px;
+        cursor: pointer;
+    }
+
+    .import_btn {
+        width: 172px;
+        height: 43px;
+        border-radius: 4px;
+        border: solid 1px #4164f5;
+        line-height: 43px;
+        text-align: center;
+        font-size: 16px;
+        font-weight: 600;
+        color: #4164f5;
+        margin-right: 12px;
+        cursor: pointer;
+        background-color: #f0f5ff;
+        transition: all 0.3s;
+    }
+
+    .import_btn:hover {
+        background-color: #e0ebff;
+    }
+
+    .save_btn {
+        width: 172px;
+        height: 43px;
+        background-color: #4164f5;
+        border-radius: 4px;
+        line-height: 43px;
+        text-align: center;
+        font-size: 16px;
+        font-weight: 600;
+        color: #fff;
+        cursor: pointer;
+        filter: grayscale(100%);
+    }
+
+    .btn_box {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        margin-top: 42px;
+    }
+
+    .lh-select {
+        width: 96px;
+        height: 34px;
+        /* box-shadow: 0rem 0.188rem 1rem 0rem rgba(68, 77, 132, 0.56); */
+        border-radius: 0.25rem;
+        border: solid 0.063rem #d7d8d9;
+        position: relative;
+        line-height: 34px;
+    }
+
+    .lh-select_k {
+        padding-left: 1rem;
+        cursor: pointer;
+        position: relative;
+        z-index: 9;
+    }
+
+    .lh-select-op {
+        display: none;
+        list-style: none;
+        padding: 6px 0;
+        margin: 0;
+        box-sizing: border-box;
+        border: solid 1px #ddd;
+        border-radius: 6px;
+        background-color: #fff;
+        margin-top: 0.2rem;
+        max-height: 10rem;
+        overflow-y: auto;
+        overflow-x: hidden;
+        position: relative;
+        z-index: 10;
+    }
+
+    .lh-select-op::-webkit-scrollbar {
+        width: 8px;
+        border-radius: 6px;
+    }
+
+    .lh-select-op::-webkit-scrollbar-track {
+        background: linear-gradient(to bottom, #f5f5f5, #e8e8e8);
+        border-radius: 6px;
+    }
+
+    .lh-select-op::-webkit-scrollbar-thumb {
+        background: linear-gradient(to bottom, #a1a1a1, #a6a6a6);
+        border-radius: 6px;
+    }
+
+    .lh-select-op li {
+        padding: 0 1rem;
+        height: 2rem;
+        line-height: 2rem;
+        cursor: pointer;
+    }
+
+    .lh-select-op li:hover {
+        background-color: #f5f7fa;
+    }
+
+    .lh-select-op li.op_a {
+        color: #4164f5;
+    }
+
+    .iconfont {
+        position: absolute;
+        right: 0.5rem;
+        top: 0.5rem;
+        width: 0;
+        height: 0;
+        border-left: 0.25rem solid transparent;
+        border-right: 0.25rem solid transparent;
+        border-top: 0.25rem solid #333;
+    }
+
+    .el-icon-s-unfold {
+        width: 20px;
+        height: 20px;
+        background-image: url(./img/add.png);
+        background-size: 100% 100%;
+    }
+
+    .del_tip {
+        width: 100%;
+        height: 100%;
+        position: fixed;
+        top: 0;
+        left: 0;
+        background-color: rgba(0, 0, 0, 0.5);
+        z-index: 999;
+    }
+
+    .del_tip_box {
+        width: 400px;
+        height: 200px;
+        background-color: #fff;
+        border-radius: 8px;
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+    }
+
+    .del_tip_title {
+        font-size: 18px;
+        font-weight: 600;
+        color: #333333;
+        margin-top: 20px;
+        text-align: center;
+    }
+
+    .del_tip_content {
+        font-size: 16px;
+        color: #333333;
+        margin-top: 20px;
+        text-align: center;
+    }
+
+    .del_tip_btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-top: 40px;
+    }
+
+    .del_tip_Cancel_btn {
+        width: 100px;
+        height: 40px;
+        border-radius: 4px;
+        border: solid 1px #1c1d1d;
+        line-height: 40px;
+        text-align: center;
+        font-size: 16px;
+        font-weight: 600;
+        color: #333333;
+        margin-right: 20px;
+        cursor: pointer;
+    }
+
+    .del_tip_del_btn {
+        width: 100px;
+        height: 40px;
+        background-color: #4164f5;
+        border-radius: 4px;
+        line-height: 40px;
+        text-align: center;
+        font-size: 16px;
+        font-weight: 600;
+        color: #fff;
+        cursor: pointer;
+    }
+
+    .del_tip_close_btn {
+        width: 20px;
+        height: 20px;
+        background-image: url(./img/close.png);
+        background-size: 100% 100%;
+        position: absolute;
+        top: 20px;
+        right: 20px;
+        cursor: pointer;
+    }
+
+    .su_tip {
+        width: 200px;
+        height: 40px;
+        background-color: #4164f5;
+        border-radius: 4px;
+        line-height: 40px;
+        text-align: center;
+        font-size: 16px;
+        font-weight: 600;
+        color: #fff;
+        position: fixed;
+        top: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 999;
+    }
+
+    .import_guide {
+        margin-top: 60px;
+        margin-bottom: 40px;
+        padding: 0;
+        background-color: transparent;
+        border-radius: 0;
+        box-shadow: none;
+        width: 100%;
+        display: block;
+        border: none;
+    }
+
+    .import_guide h3 {
+        font-size: 20px;
+        font-weight: 600;
+        color: #333333;
+        margin-bottom: 15px;
+        border-bottom: 1px solid #eee;
+        padding-bottom: 15px;
+    }
+
+    .import_guide p {
+        font-size: 16px;
+        color: #333333;
+        margin-bottom: 20px;
+        line-height: 1.5;
+    }
+
+    .csv_example {
+        margin-bottom: 30px;
+        overflow-x: auto;
+        background-color: #fff;
+        border-radius: 6px;
+        padding: 15px;
+        box-shadow: 0px 2px 8px rgba(0, 0, 0, 0.05);
+        border: 1px solid #eee;
+    }
+
+    .csv_example table {
+        width: 100%;
+        border-collapse: collapse;
+        border: 1px solid #ddd;
+    }
+
+    .csv_example th,
+    .csv_example td {
+        padding: 8px;
+        text-align: left;
+        border: 1px solid #ddd;
+    }
+
+    .csv_example th {
+        background-color: #f5f7fa;
+        font-weight: 600;
+    }
+
+    .import_notes {
+        margin-top: 20px;
+        background-color: transparent;
+        padding: 0;
+        border-radius: 0;
+    }
+
+    .import_notes h4 {
+        font-size: 16px;
+        font-weight: 600;
+        color: #333333;
+        margin-bottom: 10px;
+    }
+
+    .import_notes ul {
+        list-style-type: disc;
+        padding-left: 20px;
+    }
+
+    .import_notes li {
+        font-size: 14px;
+        color: #333333;
+        margin-bottom: 5px;
+        line-height: 1.5;
+    }
+
+    .import_dialog {
+        width: 100%;
+        height: 100%;
+        position: fixed;
+        top: 0;
+        left: 0;
+        background-color: rgba(0, 0, 0, 0.5);
+        z-index: 999;
+        display: none;
+    }
+
+    .import_dialog_box {
+        width: 500px;
+        background-color: #fff;
+        border-radius: 8px;
+        padding: 30px;
+        position: relative;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+    }
+
+    .import_dialog_title {
+        font-size: 20px;
+        font-weight: 600;
+        color: #333333;
+        margin-bottom: 30px;
+        text-align: center;
+    }
+
+    .import_dialog_content {
+        margin-bottom: 30px;
+    }
+
+    .import_dialog_content input[type="file"] {
+        width: 100%;
+        padding: 15px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        background-color: #f9f9f9;
+        cursor: pointer;
+    }
+
+    .file_info {
+        font-size: 14px;
+        color: #666;
+        margin-top: 10px;
+        padding: 5px 0;
+    }
+
+    .import_dialog_btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-top: 20px;
+    }
+
+    .import_dialog_cancel_btn {
+        width: 120px;
+        height: 40px;
+        border-radius: 4px;
+        border: solid 1px #1c1d1d;
+        line-height: 40px;
+        text-align: center;
+        font-size: 16px;
+        font-weight: 600;
+        color: #333333;
+        margin-right: 20px;
+        cursor: pointer;
+        transition: all 0.3s;
+    }
+
+    .import_dialog_cancel_btn:hover {
+        background-color: #f5f5f5;
+    }
+
+    .import_dialog_import_btn {
+        width: 120px;
+        height: 40px;
+        background-color: #4164f5;
+        border-radius: 4px;
+        line-height: 40px;
+        text-align: center;
+        font-size: 16px;
+        font-weight: 600;
+        color: #fff;
+        cursor: pointer;
+        transition: all 0.3s;
+    }
+
+    .import_dialog_import_btn:hover {
+        background-color: #3050d0;
+    }
+
+    .import_dialog_close_btn {
+        width: 24px;
+        height: 24px;
+        background-image: url(./img/close.png);
+        background-size: 100% 100%;
+        position: absolute;
+        top: 20px;
+        right: 20px;
+        cursor: pointer;
+        opacity: 0.7;
+        transition: all 0.3s;
+    }
+
+    .import_dialog_close_btn:hover {
+        opacity: 1;
+    }
+
+    /* 标题和按钮容器 */
+    .header-container {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-top: 18px;
+        margin-bottom: 20px;
+    }
+
+    /* 移除t2的顶部边距，因为它现在在flex容器中 */
+    .header-container .t2 {
+        margin-top: 0;
+    }
+
+    /* 自定义工具提示样式 */
+    .custom-tooltip-container {
+      position: relative;
+      display: inline-block;
+    }
+
+    .custom-tooltip-btn {
+      padding: 6px 10px;
+      font-size: 16px;
+      font-weight: bold;
+      color: #ffffff;
+      background-color: #4164f5;
+      border: none;
+      border-radius: 3px;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+      text-decoration: none;
+      display: inline-block;
+    }
+
+    .custom-tooltip-btn:hover {
+      background-color: #303030;
+    }
+
+    .custom-tooltip-content {
+      position: absolute;
+      bottom: 120%;
+      left: 50%;
+      transform: translateX(-50%);
+      visibility: hidden;
+      opacity: 0;
+      width: 240px;
+      background: linear-gradient(135deg, #007bff 0%, #00c6ff 100%);
+      color: #fff;
+      text-align: center;
+      padding: 15px;
+      font-size: 14px;
+      border-radius: 15px;
+      transition: all 0.4s ease;
+      z-index: 1;
+      box-shadow: 0px 10px 20px rgba(0, 123, 255, 0.3);
+      clip-path: polygon(0 0, 100% 0, 100% 85%, 50% 100%, 0 85%);
+    }
+
+    .custom-tooltip-container:hover .custom-tooltip-content {
+      visibility: visible;
+      opacity: 1;
+      transform: translateX(-50%) translateY(-10px);
+    }
+
+    .custom-tooltip-arrow {
+      position: absolute;
+      top: 100%;
+      left: 50%;
+      margin-left: -10px;
+      width: 0;
+      height: 0;
+      border-left: 10px solid transparent;
+      border-right: 10px solid transparent;
+      border-top: 10px solid #007bff;
+    }
+
+    .custom-tooltip-text {
+      font-size: 14px;
+      line-height: 1.5;
+      letter-spacing: 0.5px;
+      margin: 0;
+    }
+</style>
+
+<body>
+    <div class="box">
+        <div class="logo">
+            <img src="./img/b_logo.png" alt="logo" />
+        </div>
+
+        <div class="t1">管理代理</div>
+        <div class="header-container">
+            <div class="t2">添加、编辑或删除您的代理</div>
+            <div class="custom-tooltip-container">
+              <a href="https://truffle.wtf/project/Devilflasher" target="_blank" class="custom-tooltip-btn">打赏一个？</a>
+              <div class="custom-tooltip-content">
+                <span class="custom-tooltip-arrow"></span>
+                <p class="custom-tooltip-text">
+                  铸造一个看上去没什么用的NFT~（0.1 SOL）其实就是打赏啦
+                </p>
+              </div>
+            </div>
+        </div>
+
+        <div class="list_box">
+            <div class="flex list_title">
+                <div>名称</div>
+                <div>代理</div>
+                <div>认证</div>
+            </div>
+
+            <div class="list">
+
+            </div>
+        </div>
+
+        <div class="btn_box">
+            <div class="add_proxy_btn">+ 添加新的代理</div>
+            <div class="import_btn">批量导入</div>
+            <div class="save_btn">保存</div>
+        </div>
+
+        <!-- 导入说明区域 -->
+        <div class="import_guide">
+            <h3>批量导入说明</h3>
+            <p><span style="color: #d40027; font-weight: bold;">名称位置建议填窗口编号，这样插件连接代理后，浏览器插件图标上会有角标显示窗口编号。</span></p>
+            <p>您可以通过批量导入功能一次性添加多个代理。请按照以下格式准备 CSV 文件：</p>
+            <div class="csv_example">
+                <table>
+                    <tr>
+                        <th>名称</th>
+                        <th>代理类型</th>
+                        <th>IP地址</th>
+                        <th>端口</th>
+                        <th>用户名</th>
+                        <th>密码</th>
+                    </tr>
+                    <tr>
+                        <td>代理1</td>
+                        <td>http</td>
+                        <td>192.168.1.1</td>
+                        <td>8080</td>
+                        <td>user1</td>
+                        <td>pass1</td>
+                    </tr>
+                    <tr>
+                        <td>代理2</td>
+                        <td>https</td>
+                        <td>10.0.0.1</td>
+                        <td>3128</td>
+                        <td>user2</td>
+                        <td>pass2</td>
+                    </tr>
+                </table>
+            </div>
+            <div class="import_notes">
+                <h4>注意事项：</h4>
+                <ul>
+                    <li>支持 CSV 格式文件（可在 Excel 中另存为 CSV 格式）</li>
+                    <li>从第一行开始直接填写内容，无需表头</li>
+                    <li>按顺序填写：名称、协议、IP地址、端口、用户名、密码</li>
+                    <li>协议仅支持 HTTP、HTTPS 或 SOCKS5，不区分大小写</li>
+                    <li>端口号必须是 1-65535 之间的数字</li>
+                    <li>用户名和密码可以为空</li>
+                    <li><strong>SOCKS5 协议特别说明：</strong>目前仅支持无用户名密码的形式，这是因为 Chrome 扩展的代理 API 限制，不支持 SOCKS5 协议的认证方式</li>
+                </ul>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- 批量导入对话框 -->
+    <div class="import_dialog">
+        <div class="import_dialog_box">
+            <div class="import_dialog_title">批量导入代理</div>
+            <div class="import_dialog_content">
+                <input type="file" id="csv_file" accept=".csv" />
+                <div class="file_info">请选择 CSV 文件</div>
+            </div>
+            <div class="import_dialog_btn">
+                <div class="import_dialog_cancel_btn">取消</div>
+                <div class="import_dialog_import_btn">导入</div>
+            </div>
+            <div class="import_dialog_close_btn"></div>
+        </div>
+    </div>
+
+    <div class="del_tip">
+        <div class="del_tip_box">
+            <div class="del_tip_title">删除代理</div>
+            <div class="del_tip_content">确定要删除这个代理吗？</div>
+            <div class="del_tip_btn">
+                <div class="del_tip_Cancel_btn">取消</div>
+                <div class="del_tip_del_btn">删除</div>
+            </div>
+            <div class="del_tip_close_btn"></div>
+        </div>
+    </div>
+
+    <div class="su_tip">保存成功</div>
+</body>
+
+<script src="./js/jquery.js"></script>
+<script type="text/javascript" src="./js/proxy_set.js"></script>
+
+</html>
