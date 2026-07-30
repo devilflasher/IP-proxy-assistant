@@ -1,13 +1,13 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
 
 <head>
   <meta charset="utf-8" />
   <title>IP代理助手</title>
   <script src="./js/jquery.js"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
   <link href="./css/switch.css" rel="stylesheet">
   <link href="./css/bottom-buttons.css" rel="stylesheet">
+  <script src="./js/proxy_utils.js"></script>
   <style>
     :root {
       --main-font-family: "Noto Sans SC", "Source Han Sans SC", "Source Han Sans CN", "思源黑体", "PingFang SC", "Helvetica Neue", "Microsoft YaHei", "微软雅黑", sans-serif;
@@ -64,7 +64,7 @@
       <div class="set_box_top">
         <div class="open_1">
           <div class="set_box_tip">
-            <div class="red_dian"></div>未连接任何代理
+            <div class="red_dian"></div>未配置任何代理
           </div>
         </div>
 
@@ -81,6 +81,8 @@
           </div>
         </div>
       </div>
+
+      <div class="proxy_status_message" role="status" aria-live="polite"></div>
 
       <div class="set_box_user">
         <div class="set_box_user_title">选择代理</div>
@@ -321,6 +323,29 @@
   .ip_txt {
     width: 200px;
     color: #999;
+  }
+
+  .protocol_txt {
+    margin-top: 2px;
+    color: #667085;
+    font-size: 11px;
+  }
+
+  .proxy_status_message {
+    display: none;
+    margin: 10px 25px 0;
+    padding: 9px 10px;
+    border-radius: 6px;
+    background: #eef4ff;
+    color: #2949a8;
+    font-size: 12px;
+    line-height: 1.5;
+    text-align: left;
+  }
+
+  .proxy_status_message.error {
+    background: #fff0f0;
+    color: #b42318;
   }
 
   .open_2 {

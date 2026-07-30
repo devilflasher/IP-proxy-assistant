@@ -1,333 +1,378 @@
-// NoBiggie Proxy Extension - Background Service Worker
-// 实现Manifest V3标准的代理功能
+import "./js/proxy_utils.js";
 
-// 监听插件安装或更新事件
-chrome.runtime.onInstalled.addListener(() => {
-  console.log('NoBiggie Proxy Extension installed/updated');
-  // 初始化时关闭代理
-  turnOffProxy();
-});
+const { normalizeProxy, sameProxyEndpoint, validateProxy } = globalThis.ProxyUtils;
+const AUTH_RETRY_LIMIT = 2;
+const LOCAL_STORAGE_KEYS = ["currentProxy", "proxyEnabled", "lastProxyError"];
+const authAttempts = new Map();
+let pendingProxy = null;
 
-// 浏览器启动时恢复之前的代理设置
-chrome.runtime.onStartup.addListener(() => {
-  console.log('Chrome started, checking for saved proxy settings');
-  chrome.storage.local.get(['currentProxy', 'proxyEnabled'], (result) => {
-    if (result.proxyEnabled && result.currentProxy) {
-      console.log('Restoring saved proxy settings');
-      applyProxySettings(result.currentProxy);
-    } else {
-      // 确保角标被清除
-      clearBadge();
-    }
-  });
-});
-
-// 全局变量存储当前代理认证信息
-let currentProxyAuth = {
-  username: '',
-  password: ''
-};
-
-// 预连接测试URL列表 - 用于预热代理连接
-const TEST_URLS = [
-  'https://www.google.com/favicon.ico',
-  'https://www.twitter.com/favicon.ico',
-  'https://www.example.com/favicon.ico'
-];
-
-// 设置扩展图标角标，显示当前代理名称
-function setBadgeWithProxyName(proxyName) {
-  if (!proxyName) {
-    console.log("No proxy name provided, not setting badge");
-    return;
-  }
-  
-  // 设置角标文本（代理名称）
-  chrome.action.setBadgeText({ text: proxyName });
-  
-  // 设置角标背景色为白色
-  chrome.action.setBadgeBackgroundColor({ color: "#FFFFFF" });
-  
-  // 设置角标文本颜色为黑色
-  chrome.action.setBadgeTextColor({ color: "#000000" });
-  
-  console.log(`Badge set with proxy name: ${proxyName}`);
-}
-
-// 清除扩展图标角标
-function clearBadge() {
-  chrome.action.setBadgeText({ text: "" });
-  console.log("Badge cleared");
-}
-
-// 处理不同类型的代理设置
-function applyProxySettings(proxyInfo) {
-  if (!proxyInfo) {
-    console.error("No proxy info provided, turning off proxy");
-    turnOffProxy();
-    return;
-  }
-
-  const type = proxyInfo.select || proxyInfo.type;
-  const ip = proxyInfo.Proxy_ip || proxyInfo.ip;
-  const port = proxyInfo.Port || proxyInfo.port;
-  const username = proxyInfo.Username || proxyInfo.username;
-  const password = proxyInfo.Password || proxyInfo.password;
-  const proxyName = proxyInfo.Enter_name || proxyInfo.name || "";
-
-  console.log("Proxy info received:", JSON.stringify({
-    type: type,
-    ip: ip,
-    port: port,
-    hasUsername: !!username,
-    hasPassword: !!password,
-    name: proxyName
-  }));
-
-  if (!type || !ip || !port) {
-    console.error("Missing required proxy information");
-    console.error("Type:", type);
-    console.error("IP:", ip);
-    console.error("Port:", port);
-    return;
-  }
-
-  // 验证代理类型
-  const validTypes = ["http", "https", "socks", "socks4", "socks5"];
-  let proxyScheme = type.toLowerCase();
-  
-  if (!validTypes.includes(proxyScheme)) {
-    console.error("Invalid proxy type:", proxyScheme);
-    console.log("Defaulting to http proxy");
-    proxyScheme = "http";
-  }
-
-  // 验证端口
-  let portNumber = parseInt(port);
-  if (isNaN(portNumber) || portNumber <= 0 || portNumber > 65535) {
-    console.error("Invalid port number:", port);
-    return;
-  }
-
-  console.log(`Applying proxy settings: ${proxyScheme} ${ip}:${portNumber}`);
-
-  // 保存认证信息到全局变量，用于直接访问
-  currentProxyAuth = {
-    username: username || '',
-    password: password || ''
-  };
-
-  // 保存当前代理信息到本地存储，用于恢复
-  chrome.storage.local.set({
-    currentProxy: {
-      type: type,
-      ip: ip,
-      port: port,
-      username: username,
-      password: password,
-      name: proxyName
-    },
-    proxyEnabled: true
-  });
-
-  // 设置扩展图标角标，显示当前代理名称
-  setBadgeWithProxyName(proxyName);
-
-  // 先设置认证监听器，确保在代理设置应用前已准备好处理认证请求
-  setupAuthListener();
-
-  // 根据代理类型设置不同的配置
-  const config = {
-    mode: "fixed_servers",
-    rules: {
-      singleProxy: {
-        scheme: proxyScheme,
-        host: ip,
-        port: portNumber
-      },
-      bypassList: ["localhost", "127.0.0.1", "<local>"]
-    }
-  };
-
-  // 设置代理配置
-  chrome.proxy.settings.set(
-    { value: config, scope: "regular" },
-    () => {
+function getLocal(keys) {
+  return new Promise((resolve, reject) => {
+    chrome.storage.local.get(keys, (items) => {
       if (chrome.runtime.lastError) {
-        console.error("Error setting proxy:", chrome.runtime.lastError);
-        clearBadge();
+        reject(new Error(chrome.runtime.lastError.message));
         return;
       }
-      
-      console.log(`${type} proxy enabled`);
-      
-      // 验证代理设置是否成功应用
-      chrome.proxy.settings.get({}, (details) => {
-        console.log("Current proxy settings:", JSON.stringify(details));
-        
-        // 预热代理连接，避免后续访问时弹出认证窗口
-        preconnectToTestUrls();
-      });
-    }
-  );
-}
-
-// 预热代理连接，避免后续访问时弹出认证窗口
-function preconnectToTestUrls() {
-  console.log("Preconnecting to test URLs to warm up proxy connection");
-  
-  // 创建一个隐藏的iframe来加载测试URL
-  TEST_URLS.forEach(url => {
-    fetch(url, { 
-      method: 'HEAD',
-      mode: 'no-cors',
-      cache: 'no-store'
-    }).catch(err => {
-      // 忽略错误，这只是为了预热连接
-      console.log(`Preconnect to ${url} completed (errors are expected)`);
+      resolve(items);
     });
   });
 }
 
-// 设置认证监听器
-function setupAuthListener() {
-  // 先移除之前的认证监听器
-  try {
-    chrome.webRequest.onAuthRequired.removeListener(handleAuthRequest);
-  } catch (e) {
-    console.log("No previous auth listener to remove");
-  }
-
-  // 添加新的认证监听器 - 在Manifest V3中使用asyncBlocking
-  chrome.webRequest.onAuthRequired.addListener(
-    handleAuthRequest,
-    { urls: ["<all_urls>"] },
-    ["asyncBlocking"]
-  );
-
-  console.log("Auth listener set up with asyncBlocking");
+function setLocal(items) {
+  return new Promise((resolve, reject) => {
+    chrome.storage.local.set(items, () => {
+      if (chrome.runtime.lastError) {
+        reject(new Error(chrome.runtime.lastError.message));
+        return;
+      }
+      resolve();
+    });
+  });
 }
 
-// 认证回调函数 - 使用回调方式处理认证请求
-function handleAuthRequest(details, callback) {
-  console.log("Auth request received for: " + details.url);
-  
-  // 只处理代理认证请求
-  if (details.isProxy) {
-    console.log("Handling proxy auth request");
-    
-    if (currentProxyAuth.username && currentProxyAuth.password) {
-      console.log("Providing auth credentials for: " + currentProxyAuth.username);
-      
-      // 使用setTimeout确保回调在事件循环的下一个周期执行
-      // 这有助于避免某些情况下的认证窗口闪现
-      setTimeout(() => {
-        callback({
-          authCredentials: {
-            username: currentProxyAuth.username,
-            password: currentProxyAuth.password
-          }
-        });
-      }, 0);
-    } else {
-      // 如果没有认证信息，尝试从存储中获取
-      chrome.storage.local.get(['currentProxy'], (result) => {
-        if (result.currentProxy && 
-            result.currentProxy.username && 
-            result.currentProxy.password) {
-          
-          // 更新全局变量
-          currentProxyAuth.username = result.currentProxy.username;
-          currentProxyAuth.password = result.currentProxy.password;
-          
-          console.log("Retrieved auth credentials from storage");
-          
-          setTimeout(() => {
-            callback({
-              authCredentials: {
-                username: result.currentProxy.username,
-                password: result.currentProxy.password
-              }
-            });
-          }, 0);
-        } else {
-          console.log("No auth credentials available");
-          callback({cancel: false});
-        }
-      });
+function getSync(keys) {
+  return new Promise((resolve) => {
+    chrome.storage.sync.get(keys, (items) => resolve(items || {}));
+  });
+}
+
+function removeSync(keys) {
+  return new Promise((resolve) => {
+    chrome.storage.sync.remove(keys, resolve);
+  });
+}
+
+function getProxySettings() {
+  return new Promise((resolve, reject) => {
+    chrome.proxy.settings.get({ incognito: false }, (details) => {
+      if (chrome.runtime.lastError) {
+        reject(new Error(chrome.runtime.lastError.message));
+        return;
+      }
+      resolve(details);
+    });
+  });
+}
+
+function setProxySettings(value) {
+  return new Promise((resolve, reject) => {
+    chrome.proxy.settings.set({ value, scope: "regular" }, () => {
+      if (chrome.runtime.lastError) {
+        reject(new Error(chrome.runtime.lastError.message));
+        return;
+      }
+      resolve();
+    });
+  });
+}
+
+function proxyError(code, message) {
+  const error = new Error(message);
+  error.code = code;
+  return error;
+}
+
+function controlError(levelOfControl) {
+  if (levelOfControl === "controlled_by_other_extensions") {
+    return proxyError("PROXY_CONTROLLED_BY_OTHER_EXTENSION", "代理设置正被另一个扩展控制，请先关闭其他代理扩展");
+  }
+  if (levelOfControl === "not_controllable") {
+    return proxyError("PROXY_NOT_CONTROLLABLE", "代理设置受浏览器策略或启动参数控制，本扩展无法修改");
+  }
+  return null;
+}
+
+function buildProxyConfig(proxy) {
+  return {
+    mode: "fixed_servers",
+    rules: {
+      singleProxy: {
+        scheme: proxy.select.toLowerCase(),
+        host: proxy.Proxy_ip,
+        port: Number(proxy.Port)
+      },
+      bypassList: ["localhost", "127.0.0.1", "[::1]", "<local>"]
+    }
+  };
+}
+
+function effectiveProxy(details) {
+  const server = details?.value?.rules?.singleProxy;
+  if (details?.value?.mode !== "fixed_servers" || !server) {
+    return null;
+  }
+  return normalizeProxy({
+    select: server.scheme,
+    Proxy_ip: server.host,
+    Port: server.port
+  });
+}
+
+function setBadge(proxyName) {
+  const text = proxyName ? String(proxyName).slice(0, 4) : "";
+  chrome.action.setBadgeText({ text });
+  if (text) {
+    chrome.action.setBadgeBackgroundColor({ color: "#FFFFFF" });
+  }
+}
+
+async function saveProxyError(code, message, fatal) {
+  await setLocal({
+    lastProxyError: {
+      code,
+      message,
+      fatal: Boolean(fatal),
+      timestamp: Date.now()
+    }
+  });
+}
+
+async function migrateSyncedProxyList() {
+  const local = await getLocal(["list", "proxyStorageMigrated"]);
+  if (local.proxyStorageMigrated) {
+    return;
+  }
+
+  const synced = await getSync(["list", "ip_info"]);
+  const updates = { proxyStorageMigrated: true };
+  if ((!Array.isArray(local.list) || local.list.length === 0) && Array.isArray(synced.list)) {
+    updates.list = synced.list.map(normalizeProxy);
+  }
+
+  await setLocal(updates);
+  await removeSync(["list", "ip_info"]);
+}
+
+async function applyProxySettings(proxyInfo) {
+  const validation = validateProxy(proxyInfo, { requireName: false });
+  if (!validation.ok) {
+    throw proxyError("INVALID_PROXY", validation.errors.join("；"));
+  }
+
+  const proxy = validation.proxy;
+  const [before, storedBefore] = await Promise.all([
+    getProxySettings(),
+    getLocal(LOCAL_STORAGE_KEYS)
+  ]);
+  const blocked = controlError(before.levelOfControl);
+  if (blocked) {
+    throw blocked;
+  }
+
+  pendingProxy = proxy;
+  try {
+    await setProxySettings(buildProxyConfig(proxy));
+    const after = await getProxySettings();
+    const afterControlError = controlError(after.levelOfControl);
+    if (afterControlError) {
+      throw afterControlError;
+    }
+    if (after.levelOfControl !== "controlled_by_this_extension" || !sameProxyEndpoint(proxy, effectiveProxy(after))) {
+      throw proxyError("PROXY_NOT_APPLIED", "Chrome 未确认代理配置，可能与其他代理扩展或浏览器策略冲突");
+    }
+
+    await setLocal({
+      currentProxy: proxy,
+      proxyEnabled: true,
+      lastProxyError: null
+    });
+    setBadge(proxy.Enter_name);
+
+    return {
+      success: true,
+      warnings: validation.warnings
+    };
+  } catch (error) {
+    let restoredPreviousProxy = false;
+    try {
+      await setProxySettings(before.value || { mode: "system" });
+      restoredPreviousProxy = Boolean(storedBefore.proxyEnabled && storedBefore.currentProxy);
+    } catch (rollbackError) {
+      console.warn("Unable to restore previous proxy after failure:", rollbackError.message);
+    }
+    setBadge(restoredPreviousProxy ? storedBefore.currentProxy.Enter_name : "");
+    await setLocal({
+      currentProxy: restoredPreviousProxy ? storedBefore.currentProxy : null,
+      proxyEnabled: restoredPreviousProxy,
+      lastProxyError: {
+        code: error.code || "PROXY_APPLY_FAILED",
+        message: error.message,
+        fatal: true,
+        timestamp: Date.now()
+      }
+    });
+    throw error;
+  } finally {
+    pendingProxy = null;
+  }
+}
+
+async function turnOffProxy() {
+  const before = await getProxySettings();
+  const blocked = controlError(before.levelOfControl);
+  if (blocked) {
+    throw blocked;
+  }
+
+  await setProxySettings({ mode: "system" });
+  await setLocal({
+    currentProxy: null,
+    proxyEnabled: false,
+    lastProxyError: null
+  });
+  authAttempts.clear();
+  pendingProxy = null;
+  setBadge("");
+  return { success: true };
+}
+
+async function getProxyStatus() {
+  const [stored, settings] = await Promise.all([
+    getLocal(LOCAL_STORAGE_KEYS),
+    getProxySettings()
+  ]);
+  const configuredProxy = effectiveProxy(settings);
+  const enabled = Boolean(
+    stored.proxyEnabled
+    && stored.currentProxy
+    && settings.levelOfControl === "controlled_by_this_extension"
+    && configuredProxy
+    && sameProxyEndpoint(stored.currentProxy, configuredProxy)
+  );
+
+  let controlMessage = "";
+  const blocked = controlError(settings.levelOfControl);
+  if (blocked) {
+    controlMessage = blocked.message;
+  } else if (stored.proxyEnabled && !enabled) {
+    controlMessage = "保存的代理状态与 Chrome 当前配置不一致，请重新启用";
+  }
+
+  return {
+    success: true,
+    enabled,
+    proxyInfo: enabled ? normalizeProxy(stored.currentProxy) : null,
+    lastError: stored.lastProxyError || (controlMessage ? {
+      code: "PROXY_STATE_MISMATCH",
+      message: controlMessage,
+      fatal: true,
+      timestamp: Date.now()
+    } : null),
+    levelOfControl: settings.levelOfControl
+  };
+}
+
+async function restoreSavedProxy() {
+  await migrateSyncedProxyList();
+  const stored = await getLocal(["currentProxy", "proxyEnabled"]);
+  if (stored.proxyEnabled && stored.currentProxy) {
+    try {
+      await applyProxySettings(stored.currentProxy);
+    } catch (error) {
+      console.warn("Unable to restore saved proxy:", error.message);
     }
   } else {
-    console.log("Not a proxy auth request");
-    callback({cancel: false});
+    setBadge("");
   }
 }
 
-// 关闭代理
-function turnOffProxy() {
-  const config = {
-    mode: "system"
-  };
-
-  // 清除认证信息
-  currentProxyAuth = {
-    username: '',
-    password: ''
-  };
-
-  // 标记代理为已禁用
-  chrome.storage.local.set({proxyEnabled: false});
-
-  // 清除扩展图标角标
-  clearBadge();
-
-  // 移除认证监听器
-  try {
-    chrome.webRequest.onAuthRequired.removeListener(handleAuthRequest);
-  } catch (e) {
-    console.log("No auth listener to remove");
+function handleAuthRequest(details, callback) {
+  if (!details.isProxy) {
+    callback({});
+    return;
   }
 
-  chrome.proxy.settings.set(
-    { value: config, scope: "regular" },
-    () => {
-      console.log("Proxy turned off");
+  getLocal(["currentProxy", "proxyEnabled"]).then((stored) => {
+    const proxy = normalizeProxy(pendingProxy || stored.currentProxy);
+    const isPending = Boolean(pendingProxy);
+    if ((!stored.proxyEnabled && !isPending) || !proxy.Username) {
+      callback({});
+      return;
     }
-  );
-}
 
-// 监听来自popup或设置页面的消息
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  console.log("Message received:", message.action);
-  
-  try {
-    if (message.action === "applyProxy") {
-      if (!message.proxyInfo) {
-        console.error("No proxy info in message");
-        sendResponse({ success: false, error: "No proxy info provided" });
-        return true;
+    if (proxy.select === "SOCKS4" || proxy.select === "SOCKS5") {
+      callback({});
+      return;
+    }
+
+    const attempts = authAttempts.get(details.requestId) || 0;
+    if (attempts >= AUTH_RETRY_LIMIT) {
+      saveProxyError("PROXY_AUTH_FAILED", "代理服务器拒绝了用户名或密码", true).catch(console.error);
+      callback({ cancel: true });
+      return;
+    }
+
+    authAttempts.set(details.requestId, attempts + 1);
+    const cleanupTimer = setTimeout(() => authAttempts.delete(details.requestId), 60_000);
+    if (cleanupTimer && typeof cleanupTimer.unref === "function") {
+      cleanupTimer.unref();
+    }
+    callback({
+      authCredentials: {
+        username: proxy.Username,
+        password: proxy.Password
       }
-      
-      applyProxySettings(message.proxyInfo);
-      sendResponse({ success: true });
-    } else if (message.action === "turnOffProxy") {
-      turnOffProxy();
-      sendResponse({ success: true });
-    } else if (message.action === "getProxyStatus") {
-      chrome.storage.local.get(['proxyEnabled', 'currentProxy'], (result) => {
-        sendResponse({ 
-          enabled: result.proxyEnabled || false,
-          proxyInfo: result.currentProxy || null
-        });
-      });
-      return true; // 保持消息通道开放以进行异步响应
-    } else {
-      console.warn("Unknown action:", message.action);
-      sendResponse({ success: false, error: "Unknown action" });
+    });
+  }).catch((error) => {
+    console.error("Unable to read proxy credentials:", error);
+    callback({});
+  });
+}
+
+chrome.webRequest.onAuthRequired.addListener(
+  handleAuthRequest,
+  { urls: ["<all_urls>"] },
+  ["asyncBlocking"]
+);
+
+chrome.proxy.onProxyError.addListener((details) => {
+  saveProxyError("CHROME_PROXY_ERROR", details.details || details.error, details.fatal).catch(console.error);
+});
+
+chrome.runtime.onInstalled.addListener((details) => {
+  const initialize = async () => {
+    if (chrome.storage.local.setAccessLevel) {
+      await chrome.storage.local.setAccessLevel({ accessLevel: "TRUSTED_CONTEXTS" });
     }
-  } catch (error) {
-    console.error("Error handling message:", error);
-    sendResponse({ success: false, error: error.message });
-  }
-  
+    await migrateSyncedProxyList();
+    if (details.reason === "install") {
+      await setLocal({ proxyEnabled: false, currentProxy: null, lastProxyError: null });
+      setBadge("");
+      return;
+    }
+    await restoreSavedProxy();
+  };
+
+  initialize().catch((error) => console.error("Extension initialization failed:", error));
+});
+
+chrome.runtime.onStartup.addListener(() => {
+  restoreSavedProxy().catch((error) => console.error("Startup restore failed:", error));
+});
+
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  const handleMessage = async () => {
+    switch (message?.action) {
+      case "applyProxy":
+        if (!message.proxyInfo) {
+          throw proxyError("INVALID_PROXY", "缺少代理配置");
+        }
+        return applyProxySettings(message.proxyInfo);
+      case "turnOffProxy":
+        return turnOffProxy();
+      case "getProxyStatus":
+        return getProxyStatus();
+      default:
+        throw proxyError("UNKNOWN_ACTION", "未知操作");
+    }
+  };
+
+  handleMessage()
+    .then(sendResponse)
+    .catch((error) => sendResponse({
+      success: false,
+      error: error.message,
+      code: error.code || "UNEXPECTED_ERROR"
+    }));
   return true;
 });

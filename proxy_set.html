@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
 
 <head>
     <meta charset="utf-8" />
-    <title>IP代理助手页面 V3.0-设置</title>
+    <title>IP代理助手 V4.0 - 设置</title>
     <!-- 尝试使用更简单的 favicon 路径 -->
     <link rel="icon" type="image/png" href="./favicon/icon-192x192.png">
     <link rel="shortcut icon" type="image/png" href="./favicon/icon-192x192.png">
@@ -380,12 +380,20 @@
     .del_tip_close_btn {
         width: 20px;
         height: 20px;
-        background-image: url(./img/close.png);
-        background-size: 100% 100%;
         position: absolute;
         top: 20px;
         right: 20px;
         cursor: pointer;
+    }
+
+    .del_tip_close_btn::before,
+    .import_dialog_close_btn::before {
+        content: "×";
+        display: block;
+        color: #667085;
+        font-size: 26px;
+        line-height: 20px;
+        text-align: center;
     }
 
     .su_tip {
@@ -584,8 +592,6 @@
     .import_dialog_close_btn {
         width: 24px;
         height: 24px;
-        background-image: url(./img/close.png);
-        background-size: 100% 100%;
         position: absolute;
         top: 20px;
         right: 20px;
@@ -612,73 +618,19 @@
         margin-top: 0;
     }
 
-    /* 自定义工具提示样式 */
-    .custom-tooltip-container {
-      position: relative;
-      display: inline-block;
+    .compatibility_notice {
+        margin: 18px 0 24px;
+        padding: 16px 18px;
+        border: 1px solid #cbd8ff;
+        border-radius: 8px;
+        background: #f5f8ff;
+        color: #26345f;
+        font-size: 14px;
+        line-height: 1.7;
     }
 
-    .custom-tooltip-btn {
-      padding: 6px 10px;
-      font-size: 16px;
-      font-weight: bold;
-      color: #ffffff;
-      background-color: #4164f5;
-      border: none;
-      border-radius: 3px;
-      cursor: pointer;
-      transition: background-color 0.3s ease;
-      text-decoration: none;
-      display: inline-block;
-    }
-
-    .custom-tooltip-btn:hover {
-      background-color: #303030;
-    }
-
-    .custom-tooltip-content {
-      position: absolute;
-      bottom: 120%;
-      left: 50%;
-      transform: translateX(-50%);
-      visibility: hidden;
-      opacity: 0;
-      width: 240px;
-      background: linear-gradient(135deg, #007bff 0%, #00c6ff 100%);
-      color: #fff;
-      text-align: center;
-      padding: 15px;
-      font-size: 14px;
-      border-radius: 15px;
-      transition: all 0.4s ease;
-      z-index: 1;
-      box-shadow: 0px 10px 20px rgba(0, 123, 255, 0.3);
-      clip-path: polygon(0 0, 100% 0, 100% 85%, 50% 100%, 0 85%);
-    }
-
-    .custom-tooltip-container:hover .custom-tooltip-content {
-      visibility: visible;
-      opacity: 1;
-      transform: translateX(-50%) translateY(-10px);
-    }
-
-    .custom-tooltip-arrow {
-      position: absolute;
-      top: 100%;
-      left: 50%;
-      margin-left: -10px;
-      width: 0;
-      height: 0;
-      border-left: 10px solid transparent;
-      border-right: 10px solid transparent;
-      border-top: 10px solid #007bff;
-    }
-
-    .custom-tooltip-text {
-      font-size: 14px;
-      line-height: 1.5;
-      letter-spacing: 0.5px;
-      margin: 0;
+    .compatibility_notice strong {
+        color: #163ca7;
     }
 </style>
 
@@ -691,15 +643,13 @@
         <div class="t1">管理代理</div>
         <div class="header-container">
             <div class="t2">添加、编辑或删除您的代理</div>
-            <div class="custom-tooltip-container">
-              <a href="https://truffle.wtf/project/Devilflasher" target="_blank" class="custom-tooltip-btn">打赏一个？</a>
-              <div class="custom-tooltip-content">
-                <span class="custom-tooltip-arrow"></span>
-                <p class="custom-tooltip-text">
-                  铸造一个看上去没什么用的NFT~（0.1 SOL）其实就是打赏啦
-                </p>
-              </div>
-            </div>
+        </div>
+
+        <div class="compatibility_notice">
+            <strong>机场/梯子叠加说明：</strong>
+            如果 Clash、V2Ray、sing-box 等只开启“系统代理”，启用本扩展后 Chrome 会改用这里的静态代理，无法自动形成双层代理链。需要先让机场客户端开启 TUN/VPN/全局接管模式，并确认静态代理供应商的来源 IP 白名单包含当前机场节点的出口 IP。VMess、VLESS、Trojan、Hysteria 等机场协议由外部客户端处理，不由 Chrome 扩展直接实现。
+            <br><strong>协议说明：</strong>
+            多数供应商所说的“HTTP 代理支持 HTTPS 网站”仍应选择 HTTP；只有代理服务器入口本身使用 TLS 时才选择 HTTPS。Chrome 不支持 SOCKS4/SOCKS5 用户名密码认证。
         </div>
 
         <div class="list_box">
@@ -759,10 +709,11 @@
                     <li>支持 CSV 格式文件（可在 Excel 中另存为 CSV 格式）</li>
                     <li>从第一行开始直接填写内容，无需表头</li>
                     <li>按顺序填写：名称、协议、IP地址、端口、用户名、密码</li>
-                    <li>协议仅支持 HTTP、HTTPS 或 SOCKS5，不区分大小写</li>
+                    <li>协议支持 HTTP、HTTPS、SOCKS4 或 SOCKS5，不区分大小写</li>
                     <li>端口号必须是 1-65535 之间的数字</li>
                     <li>用户名和密码可以为空</li>
-                    <li><strong>SOCKS5 协议特别说明：</strong>目前仅支持无用户名密码的形式，这是因为 Chrome 扩展的代理 API 限制，不支持 SOCKS5 协议的认证方式</li>
+                    <li><strong>SOCKS 协议特别说明：</strong>SOCKS4/SOCKS5 仅支持无用户名密码形式；Chrome 不支持 SOCKS 代理认证</li>
+                    <li><strong>机场叠加：</strong>机场客户端必须使用 TUN/VPN/全局接管模式；仅开启系统代理时无法与这里的静态代理串联</li>
                 </ul>
             </div>
         </div>
@@ -801,6 +752,7 @@
 </body>
 
 <script src="./js/jquery.js"></script>
+<script src="./js/proxy_utils.js"></script>
 <script type="text/javascript" src="./js/proxy_set.js"></script>
 
 </html>

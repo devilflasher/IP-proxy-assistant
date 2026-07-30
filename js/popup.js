@@ -1,59 +1,41 @@
-// 设置按钮点击事件
-$(".filter").on("click", function () {
+var list = [];
+var utils = globalThis.ProxyUtils;
+
+$(".filter, .add_btn").on("click", function () {
     window.open("./proxy_set.html");
 });
 
-$(".add_btn").on("click", function () {
-    window.open("./proxy_set.html");
-});
+document.addEventListener("DOMContentLoaded", function () {
+    chrome.storage.local.get({ list: [] }, function (items) {
+        list = Array.isArray(items.list) ? items.list.map(utils.normalizeProxy) : [];
 
-// 在页面加载时检查代理状态
-document.addEventListener('DOMContentLoaded', function() {
-    // 获取代理列表
-    chrome.storage.sync.get({ list: [] }, function (items) {
-        list = items.list || [];
-        
-        // 检查当前代理状态
-        chrome.runtime.sendMessage(
-            { action: "getProxyStatus" },
-            function(response) {
-                console.log("Current proxy status:", response);
-                
-                if (response && response.enabled && response.proxyInfo) {
-                    // 如果代理已启用，找到对应的代理并标记为开启
-                    const activeProxy = response.proxyInfo;
-                    let found = false;
-                    
-                    for (let i = 0; i < list.length; i++) {
-                        if (list[i].Proxy_ip === activeProxy.ip && 
-                            list[i].Port === activeProxy.port) {
-                            list[i].open = 1;
-                            found = true;
-                            
-                            // 保存更新后的列表
-                            chrome.storage.sync.set({ list: list }, function () {
-                                initializeUI();
-                            });
-                            break;
-                        }
-                    }
-                    
-                    if (!found) {
-                        initializeUI();
-                    }
-                } else {
-                    initializeUI();
-                }
+        chrome.runtime.sendMessage({ action: "getProxyStatus" }, function (response) {
+            if (chrome.runtime.lastError) {
+                showStatus(chrome.runtime.lastError.message, true);
+                initializeUI();
+                return;
             }
-        );
+
+            var activeProxy = response && response.enabled ? response.proxyInfo : null;
+            list.forEach(function (proxy) {
+                proxy.open = activeProxy && utils.sameProxy(proxy, activeProxy) ? 1 : 0;
+            });
+
+            chrome.storage.local.set({ list: list }, function () {
+                initializeUI();
+            });
+
+            if (response && response.lastError) {
+                showStatus(response.lastError.message, true);
+            } else if (response && response.enabled) {
+                showStatus("代理已配置。实际连通性以网页访问结果为准。", false);
+            }
+        });
     });
 });
 
-var list = [];
-
-// 初始化UI
 function initializeUI() {
-    if (list.length == 0) {
+    if (list.length === 0) {
         $(".init_box").show();
         $(".set_box").hide();
     } else {
@@ -64,104 +46,132 @@ function initializeUI() {
 }
 
 function list_init() {
-    var len = 0;
+    var visibleCount = 0;
     var html = "";
+
     for (var i = 0; i < list.length; i++) {
-        var info = list[i];
-        if (info.Proxy_ip != "" && info.Port != "") {
-            html += `<div class="set_box_user_box ${info.open == 1 ? "bg1" : "bg2"}">
+        var info = utils.normalizeProxy(list[i]);
+        list[i] = info;
+        if (!info.Proxy_ip || !info.Port) {
+            continue;
+        }
+
+        html += `<div class="set_box_user_box ${info.open === 1 ? "bg1" : "bg2"}">
             <div>
-              <div class="name_txt">${info.Enter_name}</div>
-              <div class="ip_txt">${info.Proxy_ip + ':' + info.Port}</div>
+              <div class="name_txt">${utils.escapeHtml(info.Enter_name)}</div>
+              <div class="ip_txt">${utils.escapeHtml(formatEndpoint(info))}</div>
+              <div class="protocol_txt">${utils.escapeHtml(info.select)}</div>
             </div>
-    
-            <label class="switch">
-                <input type="checkbox" class="proxy-toggle" data-index="${i}" ${info.open == 1 ? 'checked' : ''}>
+            <label class="switch" title="${info.open === 1 ? "关闭代理" : "启用代理"}">
+                <input type="checkbox" class="proxy-toggle" data-index="${i}" ${info.open === 1 ? "checked" : ""}>
                 <span class="slider"></span>
             </label>
           </div>`;
-            len++;
+        visibleCount++;
 
-            if (info.open == 1) {
-                view_open(list[i]);
-            }
+        if (info.open === 1) {
+            view_open(info);
         }
     }
+
     $(".set_box_user_list").html(html);
     connect_toggle_click();
-    if (len == 0) {
+    if (visibleCount === 0) {
         $(".init_box").show();
         $(".set_box").hide();
     }
 }
 
+function formatEndpoint(info) {
+    var host = info.Proxy_ip.includes(":") ? `[${info.Proxy_ip}]` : info.Proxy_ip;
+    return `${host}:${info.Port}`;
+}
+
 function connect_toggle_click() {
-    $(".proxy-toggle").on("change", function() {
-        var i = $(this).data("index");
+    $(".proxy-toggle").on("change", function () {
+        var index = Number($(this).data("index"));
         var isChecked = $(this).prop("checked");
-        
-        if (isChecked) {
-            // 连接代理
-            var ip = list[i].Proxy_ip + ":" + list[i].Port;
-            console.log("Attempting to connect to proxy:", ip);
-            console.log("Proxy details:", JSON.stringify(list[i]));
-            
-            // 确保代理名称可用于角标显示
-            var proxyName = list[i].Enter_name || "";
-            console.log("Proxy name for badge:", proxyName);
-            
-            chrome.storage.sync.set({ ip_info: list[i] }, function () {
-                if (chrome.runtime.lastError) {
-                    console.error("Error saving proxy info:", chrome.runtime.lastError);
-                }
-            });
-            
-            chrome.runtime.sendMessage(
-                { action: "applyProxy", proxyInfo: list[i] },
-                function(response) {
-                    console.log("Proxy applied response:", response);
-                    if (response && response.success) {
-                        list_close();
-                        list[i].open = 1;
-                        chrome.storage.sync.set({ list: list }, function () {
-                            if (chrome.runtime.lastError) {
-                                console.error("Error saving list:", chrome.runtime.lastError);
-                            }
-                            list_init();
-                        });
-                    } else {
-                        console.error("Failed to apply proxy:", response);
-                        // 如果连接失败，将开关切回关闭状态
-                        $(this).prop("checked", false);
-                    }
-                }
-            );
-        } else {
-            // 断开代理
-            console.log("Attempting to disconnect proxy");
-            chrome.runtime.sendMessage(
-                { action: "turnOffProxy" },
-                function(response) {
-                    console.log("Proxy turned off response:", response);
-                    if (response && response.success) {
-                        list_close();
-                        view_close();
-                    } else {
-                        console.error("Failed to turn off proxy:", response);
-                        // 如果断开失败，将开关切回打开状态
-                        $(this).prop("checked", true);
-                    }
-                }
-            );
+        var toggle = $(this);
+
+        if (!list[index]) {
+            toggle.prop("checked", false);
+            showStatus("代理配置不存在，请刷新后重试。", true);
+            return;
         }
+
+        $(".proxy-toggle").prop("disabled", true);
+        if (isChecked) {
+            enableProxy(index, toggle);
+        } else {
+            disableProxy(toggle);
+        }
+    });
+}
+
+function enableProxy(index, toggle) {
+    var validation = utils.validateProxy(list[index]);
+    if (!validation.ok) {
+        toggle.prop("checked", false);
+        $(".proxy-toggle").prop("disabled", false);
+        showStatus(validation.errors.join("；"), true);
+        return;
+    }
+
+    chrome.runtime.sendMessage(
+        { action: "applyProxy", proxyInfo: validation.proxy },
+        function (response) {
+            $(".proxy-toggle").prop("disabled", false);
+            if (chrome.runtime.lastError || !response || !response.success) {
+                toggle.prop("checked", false);
+                showStatus(
+                    chrome.runtime.lastError ? chrome.runtime.lastError.message : (response && response.error) || "代理配置失败",
+                    true
+                );
+                return;
+            }
+
+            list.forEach(function (proxy, proxyIndex) {
+                proxy.open = proxyIndex === index ? 1 : 0;
+            });
+            chrome.storage.local.set({ list: list }, function () {
+                list_init();
+            });
+            view_open(list[index]);
+
+            var warning = response.warnings && response.warnings.length
+                ? ` ${response.warnings.join("；")}`
+                : "";
+            showStatus(`代理已配置。实际连通性以网页访问结果为准。${warning}`, false);
+        }
+    );
+}
+
+function disableProxy(toggle) {
+    chrome.runtime.sendMessage({ action: "turnOffProxy" }, function (response) {
+        $(".proxy-toggle").prop("disabled", false);
+        if (chrome.runtime.lastError || !response || !response.success) {
+            toggle.prop("checked", true);
+            showStatus(
+                chrome.runtime.lastError ? chrome.runtime.lastError.message : (response && response.error) || "恢复系统代理失败",
+                true
+            );
+            return;
+        }
+
+        list.forEach(function (proxy) {
+            proxy.open = 0;
+        });
+        chrome.storage.local.set({ list: list }, function () {
+            view_close();
+        });
+        showStatus("已恢复 Chrome 的系统代理设置。", false);
     });
 }
 
 function view_open(info) {
     $(".open_1").hide();
-    $(".open_user").text(info.Enter_name);
-    var ip = info.Proxy_ip + ":" + info.Port;
-    $(".open_ip").text(ip);
+    $(".open_user").text(info.Enter_name || "未命名代理");
+    $(".open_ip").text(`${info.select} ${formatEndpoint(info)}`);
     $(".open_2").show();
 }
 
@@ -171,45 +181,14 @@ function view_close() {
     list_init();
 }
 
-function list_close() {
-    for (var i = 0; i < list.length; i++) {
-        list[i].open = 0;
-    }
-    chrome.storage.sync.set({ list: list }, function () { });
+function showStatus(message, isError) {
+    var status = $(".proxy_status_message");
+    status.text(message || "");
+    status.toggleClass("error", Boolean(isError));
+    status.toggle(Boolean(message));
 }
 
-$(".nobiggie").on("click", function () {
-    window.open("https://www.nobiggie.com/");
-});
-
-// 断开连接按钮点击处理 - 使用更具体的选择器
 $(".button-container .button").on("click", function () {
-    chrome.runtime.sendMessage(
-        { action: "turnOffProxy" },
-        function(response) {
-            console.log("Proxy turned off:", response);
-            if (response && response.success) {
-                list_close();
-                view_close();
-            }
-        }
-    );
+    $(".proxy-toggle").prop("disabled", true);
+    disableProxy($(".proxy-toggle:checked"));
 });
-
-// 添加社区链接点击事件
-$(".hover-me").on("click", function(e) {
-    e.preventDefault();
-    chrome.tabs.create({ url: "https://discord.com/invite/RMsffEx277" });
-});
-
-// 添加 X 按钮点击事件 - 阻止冒泡并防止触发其他按钮行为
-$(".button.x").on("click", function(e) {
-    e.preventDefault();
-    e.stopPropagation();
-    e.stopImmediatePropagation(); // 阻止同一元素上其他事件处理函数的执行
-    console.log("X按钮被点击，即将打开Twitter页面");
-    chrome.tabs.create({ url: "https://x.com/DevilflasherX" });
-    return false; // 彻底阻止默认行为和事件冒泡
-});
-
-
